@@ -6,7 +6,7 @@
 
 **One button. One answer. A voice assistant for seniors.**
 
-[Live](https://medora-ai-479.netlify.app) · [Quick Start](#quick-start) · [Deploy](#deploy) · [Config](#config)
+[Live](https://medora4seniors.netlify.app) · [Quick Start](#quick-start) · [Deploy](#deploy) · [Config](#config)
 
 </div>
 
