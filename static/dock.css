@@ -1,0 +1,559 @@
+/* ---------------------------------------------------------------------------
+   A quiet app dock. It stays at the right edge and leaves the assistant in
+   the middle of the room. Tooltips supply labels without adding permanent
+   visual noise.
+--------------------------------------------------------------------------- */
+
+.app-dock {
+  position: fixed;
+  top: 50%;
+  right: max(16px, env(safe-area-inset-right));
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  padding: 7px;
+  border: 1px solid rgb(var(--line) / .10);
+  border-radius: 20px;
+  background: rgb(251 249 246 / .82);
+  background: color-mix(in srgb, var(--card) 78%, transparent);
+  box-shadow:
+    0 16px 36px rgb(var(--line) / .10),
+    inset 0 1px rgb(var(--rim) / .18);
+  -webkit-backdrop-filter: blur(18px) saturate(1.2);
+  backdrop-filter: blur(18px) saturate(1.2);
+  transform: translateY(-50%);
+  font-family: ui-sans-serif, -apple-system, system-ui, sans-serif;
+}
+
+.app-dock__item {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 14px;
+  background: transparent;
+  color: var(--card-ink);
+  cursor: pointer;
+  appearance: none;
+  transition:
+    color 180ms ease,
+    background 180ms ease,
+    transform 260ms var(--spring);
+}
+
+.app-dock__item svg {
+  width: 22px;
+  height: 22px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.55;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+
+.app-dock__item .app-dock__fill {
+  fill: currentColor;
+  stroke: none;
+}
+
+.app-dock__item:hover {
+  background: rgb(var(--line) / .07);
+  transform: translateX(-2px);
+}
+
+.app-dock__item:active { transform: translateX(-2px) scale(.94); }
+
+.app-dock__item:focus-visible {
+  outline: 2px solid rgb(var(--line) / .48);
+  outline-offset: 2px;
+}
+
+.app-dock__item.is-active {
+  color: var(--card);
+  background: var(--card-ink);
+}
+
+.app-dock__item::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  top: 50%;
+  right: calc(100% + 12px);
+  padding: 6px 9px;
+  border-radius: 8px;
+  color: var(--card);
+  background: var(--card-ink);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: .01em;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(4px, -50%);
+  transition: opacity 140ms ease, transform 180ms var(--spring);
+}
+
+.app-dock__item:hover::after,
+.app-dock__item:focus-visible::after {
+  opacity: 1;
+  transform: translate(0, -50%);
+}
+
+.app-dock__rule {
+  width: 22px;
+  height: 1px;
+  margin: 2px 0;
+  background: rgb(var(--line) / .11);
+}
+
+/* ── game launcher ─────────────────────────────────────────────────────── */
+
+.win__body.game-picker,
+.win__body.calendar {
+  justify-items: stretch;
+  gap: 0;
+  padding: 0 20px 22px;
+}
+
+.win__body.calendar {
+  height: min(340px, calc(100vh - 72px));
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.app-panel__eyebrow {
+  margin: 0 0 4px;
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+  opacity: .38;
+}
+
+.app-panel__title {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 620;
+  line-height: 1.15;
+  letter-spacing: -.025em;
+}
+
+.game-picker__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
+  margin-top: 18px;
+}
+
+.game-picker__game {
+  min-height: 104px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 13px;
+  border: 1px solid rgb(var(--line) / .11);
+  border-radius: 14px;
+  color: inherit;
+  background: transparent;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background 160ms ease, border-color 160ms ease, transform 220ms var(--spring);
+}
+
+.game-picker__game:hover,
+.game-picker__game:focus-visible {
+  border-color: rgb(var(--line) / .2);
+  background: rgb(var(--line) / .05);
+  outline: none;
+  transform: translateY(-2px);
+}
+
+.game-picker__icon {
+  height: 31px;
+  display: flex;
+  align-items: center;
+  font-size: 25px;
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: -.08em;
+  opacity: .62;
+}
+
+.game-picker__dots {
+  display: grid;
+  grid-template-columns: repeat(2, 8px);
+  gap: 4px;
+}
+
+.game-picker__dots i {
+  width: 8px;
+  height: 8px;
+  border: 1.5px solid currentColor;
+  border-radius: 50%;
+}
+
+.game-picker__dots i:not(:last-child) { background: currentColor; }
+
+.game-picker__name { display: block; font-size: 15px; font-weight: 620; }
+.game-picker__desc { display: block; margin-top: 2px; font-size: 11px; opacity: .4; }
+
+/* ── calendar ──────────────────────────────────────────────────────────── */
+
+.calendar__today {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgb(var(--line) / .09);
+}
+
+.calendar__date {
+  width: 54px;
+  flex: 0 0 54px;
+  font-size: 38px;
+  font-weight: 620;
+  line-height: 1;
+  letter-spacing: -.04em;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.calendar__heading { min-width: 0; }
+.calendar__heading .app-panel__title { font-size: 21px; }
+
+.calendar__add {
+  flex: none;
+  margin-left: auto;
+  padding: 8px 11px;
+  border: 1px solid rgb(var(--line) / .12);
+  border-radius: 10px;
+  color: inherit;
+  background: transparent;
+  font: 650 12px/1 ui-sans-serif, -apple-system, system-ui, sans-serif;
+  cursor: pointer;
+  transition: background 160ms ease, border-color 160ms ease, transform 200ms var(--spring);
+}
+
+.calendar__add:hover,
+.calendar__add:focus-visible {
+  border-color: rgb(var(--line) / .22);
+  background: rgb(var(--line) / .06);
+  outline: none;
+  transform: translateY(-1px);
+}
+
+.calendar__notice {
+  margin-top: 12px;
+  padding: 8px 10px;
+  border-radius: 9px;
+  color: var(--good);
+  background: color-mix(in srgb, var(--good) 9%, transparent);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.calendar__section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin: 17px 1px 9px;
+}
+
+.calendar__section-head h3 {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 650;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  opacity: .48;
+}
+
+.calendar__count { font-size: 12px; opacity: .34; }
+
+.calendar__agenda {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  align-content: start;
+  gap: 7px;
+  overflow: auto;
+  scrollbar-width: thin;
+}
+
+.calendar__event {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) auto;
+  gap: 11px;
+  align-items: center;
+  width: 100%;
+  min-height: 58px;
+  padding: 8px 10px 8px 8px;
+  border: 1px solid rgb(var(--line) / .09);
+  border-radius: 13px;
+  color: inherit;
+  background: transparent;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background 160ms ease, border-color 160ms ease, opacity 160ms ease;
+}
+
+.calendar__event:hover,
+.calendar__event:focus-visible {
+  border-color: rgb(var(--line) / .18);
+  background: rgb(var(--line) / .045);
+  outline: none;
+}
+
+.calendar__event.is-past { opacity: .56; }
+.calendar__event.is-past:hover,
+.calendar__event.is-past:focus-visible { opacity: .82; }
+
+.calendar__event-date {
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.calendar__event-month {
+  display: block;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  opacity: .4;
+}
+
+.calendar__event-day {
+  display: block;
+  margin-top: 4px;
+  font-size: 19px;
+  font-weight: 630;
+  line-height: 1;
+}
+
+.calendar__event-copy { display: block; min-width: 0; }
+.calendar__event-title {
+  display: block;
+  overflow: hidden;
+  font-size: 14px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.calendar__event-when { display: block; margin-top: 2px; font-size: 11.5px; opacity: .42; }
+
+.calendar__event-edit {
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: .03em;
+  text-transform: uppercase;
+  opacity: .28;
+}
+
+.calendar__empty,
+.calendar__loading,
+.calendar__error {
+  min-height: 0;
+  flex: 1 1 auto;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  color: inherit;
+  font-size: 13px;
+  text-align: center;
+  opacity: .44;
+}
+
+.calendar__hint {
+  margin: 13px 2px 0;
+  font-size: 11px;
+  line-height: 1.45;
+  opacity: .34;
+}
+
+/* ── calendar form ─────────────────────────────────────────────────────── */
+
+.calendar-form {
+  min-height: 0;
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.calendar-form__head {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid rgb(var(--line) / .09);
+}
+
+.calendar-form__heading { min-width: 0; }
+.calendar-form__heading .app-panel__title { font-size: 21px; }
+
+.calendar-form__back {
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
+  display: grid;
+  place-items: center;
+  padding: 0 0 2px;
+  border: 1px solid rgb(var(--line) / .11);
+  border-radius: 11px;
+  color: inherit;
+  background: transparent;
+  font: 500 20px/1 ui-sans-serif, -apple-system, system-ui, sans-serif;
+  cursor: pointer;
+}
+
+.calendar-form__back:hover,
+.calendar-form__back:focus-visible {
+  background: rgb(var(--line) / .06);
+  outline: none;
+}
+
+.calendar-form__field {
+  display: grid;
+  min-width: 0;
+  gap: 6px;
+  color: inherit;
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: .055em;
+  text-transform: uppercase;
+}
+
+.calendar-form__field > span { opacity: .52; }
+
+.calendar-form__when {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, .8fr);
+  gap: 10px;
+}
+
+.win .calendar-form input {
+  width: 100%;
+  min-width: 0;
+  max-width: none;
+  padding: 11px 12px;
+  border-radius: 10px;
+  color: var(--card-ink);
+  background: transparent;
+  font: 550 14px/1.2 ui-sans-serif, -apple-system, system-ui, sans-serif;
+  letter-spacing: normal;
+  text-align: left;
+  text-transform: none;
+  opacity: 1;
+  color-scheme: light dark;
+}
+
+.win .calendar-form input::placeholder {
+  color: inherit;
+  opacity: .32;
+}
+
+.calendar-form__status {
+  min-height: 17px;
+  color: var(--bad);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.calendar-form__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: auto;
+}
+
+.calendar-form__button {
+  min-height: 38px;
+  padding: 0 13px;
+  border: 1px solid rgb(var(--line) / .12);
+  border-radius: 10px;
+  color: inherit;
+  background: transparent;
+  font: 650 12px/1 ui-sans-serif, -apple-system, system-ui, sans-serif;
+  cursor: pointer;
+  transition: background 160ms ease, border-color 160ms ease, opacity 160ms ease;
+}
+
+.calendar-form__button:hover,
+.calendar-form__button:focus-visible {
+  border-color: rgb(var(--line) / .24);
+  background: rgb(var(--line) / .06);
+  outline: none;
+}
+
+.calendar-form__save {
+  border-color: var(--card-ink);
+  color: var(--card);
+  background: var(--card-ink);
+}
+
+.calendar-form__save:hover,
+.calendar-form__save:focus-visible { background: var(--card-ink); opacity: .82; }
+
+.calendar-form__delete {
+  margin-right: auto;
+  color: var(--bad);
+}
+
+.calendar-form__delete.is-confirming {
+  border-color: var(--bad);
+  color: var(--card);
+  background: var(--bad);
+}
+
+.calendar-form.is-busy { opacity: .72; }
+.calendar-form__button:disabled,
+.calendar-form input:disabled { cursor: wait; }
+
+@media (max-width: 560px) {
+  .app-dock {
+    right: max(9px, env(safe-area-inset-right));
+    gap: 3px;
+    padding: 6px;
+    border-radius: 18px;
+  }
+
+  .app-dock__item { width: 40px; height: 40px; border-radius: 12px; }
+  .app-dock__item svg { width: 20px; height: 20px; }
+  .app-dock__item::after { display: none; }
+
+  /* Keep app windows usable without letting them sit underneath the dock. */
+  .win {
+    left: calc(50% - 31px);
+    width: min(calc(100vw - 82px), 420px);
+  }
+
+  .game-picker__game { min-height: 94px; padding: 11px; }
+
+  .calendar__today { gap: 8px; }
+  .calendar__date { width: 45px; flex-basis: 45px; font-size: 34px; }
+  .calendar__heading .app-panel__title { font-size: 18px; }
+  .calendar__add { padding-inline: 9px; }
+  .calendar-form__when { grid-template-columns: 1fr; }
+  .calendar-form__actions { flex-wrap: wrap; }
+}
+
+@media (prefers-color-scheme: dark) {
+  .app-dock { background: rgb(23 23 26 / .82); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-dock__item,
+  .app-dock__item::after,
+  .game-picker__game { transition-duration: 1ms; }
+}

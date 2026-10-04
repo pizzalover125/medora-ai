@@ -1,0 +1,241 @@
+/* ---------------------------------------------------------------------------
+   The game window. One at a time, dragged by its bar, closed by its X.
+   Same ink-on-paper palette as the orb - nothing decorative.
+--------------------------------------------------------------------------- */
+
+:root {
+  --card: #fbf9f6;
+  --card-ink: #0b0b0c;
+  --line: 11 11 12;
+  --good: #3f8f5f;
+  --bad: #b4452f;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --card: #17171a;
+    --card-ink: #f1f1f3;
+    --line: 255 255 255;
+    --good: #63b98a;
+    --bad: #d9705a;
+  }
+}
+
+.win {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  z-index: 10;
+  width: min(92vw, 420px);
+  color: var(--card-ink);
+  background: var(--card);
+  border: 1px solid rgb(var(--line) / .10);
+  border-radius: 18px;
+  box-shadow:
+    0 24px 60px rgb(var(--line) / .16),
+    0 4px 12px rgb(var(--line) / .08);
+  font: 500 15px/1.4 ui-sans-serif, -apple-system, system-ui, sans-serif;
+  /* --x/--y are the drag offset, set from JS. */
+  transform: translate(calc(-50% + var(--x, 0px)), calc(-50% + var(--y, 0px)))
+             scale(var(--s, 1));
+  opacity: var(--o, 1);
+  transition: opacity 220ms var(--swift), transform 420ms var(--spring);
+  will-change: transform;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Placement is measured off-screen. Enabling the transition only after the
+   final coordinates are committed prevents a center-to-random-position fly. */
+.win.is-placing {
+  visibility: hidden;
+  transition: none;
+}
+
+/* While dragging, follow the finger exactly - no easing lag. */
+.win.is-dragging { transition: none; }
+
+.win__bar {
+  display: flex;
+  justify-content: flex-end;
+  padding: 8px 8px 0;
+  cursor: grab;
+}
+.win.is-dragging .win__bar { cursor: grabbing; }
+
+.win__close {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 9px;
+  background: none;
+  color: inherit;
+  font-size: 19px;
+  line-height: 1;
+  opacity: .35;
+  cursor: pointer;
+  transition: opacity 160ms, background 160ms;
+}
+.win__close:hover { opacity: 1; background: rgb(var(--line) / .07); }
+
+.win__body {
+  padding: 4px 22px 24px;
+  display: grid;
+  justify-items: center;
+  gap: 16px;
+}
+
+/* A single quiet line of state - round number, score. Never more. */
+.win__note {
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  opacity: .4;
+  min-height: 1.2em;
+}
+
+.win__prompt {
+  font-size: 30px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: .01em;
+}
+
+/* ── shared feedback ────────────────────────────────────────────────────── */
+
+@keyframes win-shake {
+  0%, 100% { transform: translateX(0); }
+  25%      { transform: translateX(-7px); }
+  50%      { transform: translateX(6px); }
+  75%      { transform: translateX(-3px); }
+}
+.shake { animation: win-shake 380ms var(--swift); }
+
+@keyframes win-pop {
+  0%   { transform: scale(1); }
+  45%  { transform: scale(1.10); }
+  100% { transform: scale(1); }
+}
+.pop { animation: win-pop 340ms var(--spring); }
+
+/* ── Simon ──────────────────────────────────────────────────────────────── */
+
+.simon {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  width: 100%;
+  max-width: 300px;
+}
+
+.simon button {
+  aspect-ratio: 1;
+  border: 0;
+  border-radius: 14px;
+  background: var(--c);
+  opacity: .34;
+  cursor: pointer;
+  transition: opacity 260ms var(--swift), transform 260ms var(--spring);
+}
+.simon button.lit {
+  opacity: 1;
+  transform: scale(1.04);
+  transition-duration: 90ms;
+}
+.simon[data-locked="1"] button { cursor: default; }
+
+/* ── Difference ─────────────────────────────────────────────────────────── */
+
+.diff {
+  display: grid;
+  grid-template-columns: repeat(10, 1fr);
+  width: 100%;
+  line-height: 1;
+}
+
+.diff button {
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  font-size: clamp(13px, 3.4vw, 19px);
+  cursor: pointer;
+  transition: background 140ms, transform 140ms var(--spring);
+}
+.diff button:hover { background: rgb(var(--line) / .06); }
+.diff button.found { background: rgb(63 143 95 / .22); transform: scale(1.25); }
+
+/* ── Scramble ───────────────────────────────────────────────────────────── */
+
+.scramble__letters {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+
+.scramble__letters span {
+  width: 40px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgb(var(--line) / .14);
+  border-radius: 10px;
+  font-size: 22px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.win input {
+  width: 100%;
+  max-width: 260px;
+  padding: 12px 14px;
+  border: 1px solid rgb(var(--line) / .16);
+  border-radius: 12px;
+  background: transparent;
+  color: inherit;
+  font: 600 20px/1 inherit;
+  text-align: center;
+  text-transform: uppercase;
+  outline: none;
+  transition: border-color 200ms;
+}
+.win input:focus { border-color: rgb(var(--line) / .42); }
+.win input.right  { border-color: var(--good); color: var(--good); }
+.win input.wrong  { border-color: var(--bad); }
+
+/* ── Multi ──────────────────────────────────────────────────────────────── */
+
+.multi {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  width: 100%;
+  max-width: 300px;
+}
+
+.multi button {
+  padding: 16px 0;
+  border: 1px solid rgb(var(--line) / .14);
+  border-radius: 12px;
+  background: none;
+  color: inherit;
+  font: 600 21px/1 inherit;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  transition: background 160ms, border-color 160ms, transform 200ms var(--spring);
+}
+.multi button:hover { background: rgb(var(--line) / .06); }
+.multi button.right { border-color: var(--good); color: var(--good); }
+.multi button.wrong { border-color: var(--bad); color: var(--bad); }
+
+@media (prefers-reduced-motion: reduce) {
+  .win { transition-duration: 1ms; }
+  .shake, .pop { animation: none; }
+}

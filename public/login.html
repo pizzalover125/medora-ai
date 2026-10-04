@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#efece6">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Sign in · Ask</title>
+  <link rel="icon" href="/icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/static/style.css">
+  <link rel="stylesheet" href="/static/games.css">
+  <link rel="stylesheet" href="/static/messages.css">
+  <style>
+    body { padding: 16px; color: var(--card-ink); font: 500 16px/1.45 ui-sans-serif, -apple-system, system-ui, sans-serif; }
+    .login { width: min(380px, 100%); padding: 28px 24px 24px; border: 1px solid rgb(var(--line) / .1);
+             border-radius: 22px; background: var(--card); box-shadow: 0 30px 80px -40px rgb(0 0 0 / .35); }
+    .login h1 { margin: 0 0 6px; font-size: 26px; font-weight: 640; letter-spacing: -.02em; }
+    .login p { margin: 0 0 20px; font-size: 14px; opacity: .55; }
+    .login form { display: grid; gap: 10px; }
+    .login .msg-composer__input { font-size: 18px; padding: 14px; letter-spacing: .04em; }
+    .login .msg-composer__send { min-height: 50px; font-size: 16px; }
+  </style>
+</head>
+<body>
+  <main class="login">
+    <h1>Ask</h1>
+    <p>Enter the passcode once to set up this device. It will stay signed in.</p>
+    <form id="form">
+      <input class="msg-composer__input" id="code" type="password" autocomplete="current-password"
+             placeholder="Passcode" aria-label="Passcode" required autofocus>
+      <button class="msg-composer__send" type="submit">Sign in</button>
+      <div class="msg-status" id="status" role="alert"></div>
+    </form>
+  </main>
+  <script>
+    (() => {
+      const form = document.getElementById('form');
+      const status = document.getElementById('status');
+      fetch('/api/session', {cache: 'no-store'}).then((r) => r.json()).then((s) => {
+        if (!s.required || s.senior) location.replace('/');
+      }).catch(() => {});
+      form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        status.textContent = '';
+        const button = form.querySelector('button');
+        button.disabled = true;
+        try {
+          const r = await fetch('/api/session', {
+            method: 'POST', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({passcode: document.getElementById('code').value}),
+          });
+          const data = await r.json().catch(() => ({}));
+          if (!r.ok) throw new Error(data.message || 'That did not work. Please try again.');
+          location.replace('/');
+        } catch (error) {
+          status.textContent = error.message;
+        } finally {
+          button.disabled = false;
+        }
+      });
+    })();
+  </script>
+</body>
+</html>

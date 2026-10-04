@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#efece6">
+  <title>{{ contact.name }} · Messages</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='games.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='messages.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='call.css') }}">
+</head>
+<body class="thread-page" data-slug="{{ contact.slug }}" data-name="{{ contact.name }}">
+
+  <header class="thread-page__head">
+    <span class="msg-avatar">{{ contact.calls[0] }}</span>
+    <div class="thread-page__copy">
+      <p class="thread-page__eyebrow">Messaging</p>
+      <h1 class="thread-page__title">{{ contact.calls }}</h1>
+    </div>
+    <span class="thread-page__you">You are {{ contact.name }} · {{ contact.relation }}</span>
+    <button class="call-start" id="call" type="button" title="Video call"
+            aria-label="Start a video call with {{ contact.calls }}">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M4.5 7.5h9a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-9a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2Zm11 3.2 4-2.4v7.4l-4-2.4"></path>
+      </svg>
+    </button>
+  </header>
+
+  <main class="chat-log" id="log" role="log" aria-live="polite"
+        aria-label="Messages with {{ contact.calls }}">
+    <div class="msg-loading">Opening the conversation…</div>
+  </main>
+
+  <div class="msg-status" id="status" role="alert"></div>
+
+  <form class="msg-composer" id="composer">
+    <input class="msg-composer__input" id="text" type="text" maxlength="600"
+           autocomplete="off" placeholder="Message {{ contact.calls }}…"
+           aria-label="Message {{ contact.calls }}">
+    <button class="msg-composer__send" type="submit">Send</button>
+  </form>
+
+  <nav class="thread-page__switch" aria-label="Other contacts">
+    <span>Other people:</span>
+    {% for other in contacts if other.slug != contact.slug %}
+      <a href="{{ url_for('contact_page', contact_slug=other.slug) }}">{{ other.relation }}</a>
+    {% endfor %}
+  </nav>
+
+  <script src="{{ url_for('static', filename='call.js') }}"></script>
+  <script src="{{ url_for('static', filename='contact.js') }}"></script>
+</body>
+</html>

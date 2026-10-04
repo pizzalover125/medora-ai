@@ -1,0 +1,90 @@
+/* ---------------------------------------------------------------------------
+   The homeroom layer: the palette and the buttons shared by the apps dressed
+   in it - Medora and News. An app opts in by putting `hr` on its window body.
+
+   Greyscale only, 4px corners, lowercase chrome. The tokens sit on the window
+   rather than on its body because a custom property only reaches downwards,
+   and the window itself paints with them.
+--------------------------------------------------------------------------- */
+
+.win:has(> .win__body.hr) {
+  --hr-card: hsl(0 0% 100%);
+  --hr-fg: hsl(0 0% 5%);
+  --hr-muted: hsl(0 0% 92%);
+  --hr-muted-fg: hsl(0 0% 45%);
+  --hr-border: hsl(0 0% 88%);
+  --hr-radius: 0.25rem;
+
+  color: var(--hr-fg);
+  background: var(--hr-card);
+  border-color: var(--hr-border);
+}
+
+@media (prefers-color-scheme: dark) {
+  .win:has(> .win__body.hr) {
+    --hr-card: hsl(0 0% 10%);
+    --hr-fg: hsl(0 0% 95%);
+    --hr-muted: hsl(0 0% 20%);
+    --hr-muted-fg: hsl(0 0% 60%);
+    --hr-border: hsl(0 0% 25%);
+  }
+}
+
+.win__body.hr {
+  color: var(--hr-fg);
+  font: 400 14px/1.45 ui-sans-serif, -apple-system, system-ui, sans-serif;
+  letter-spacing: -0.005em;
+}
+
+/* The window's own chrome follows the app inside it. */
+.win:has(> .win__body.hr) .win__bar { padding-bottom: 0; }
+.win:has(> .win__body.hr) .win__close { color: var(--hr-muted-fg); }
+.win:has(> .win__body.hr) .win__close:hover {
+  color: var(--hr-fg);
+  background: var(--hr-muted);
+}
+
+/* ── buttons ───────────────────────────────────────────────────────────── */
+
+.hr-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 34px;
+  padding: 0 13px;
+  border: 1px solid transparent;
+  border-radius: var(--hr-radius);
+  color: var(--hr-fg);
+  background: transparent;
+  font: 500 13px/1 ui-sans-serif, -apple-system, system-ui, sans-serif;
+  text-transform: lowercase;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 200ms cubic-bezier(.4, 0, .2, 1), color 200ms, border-color 200ms;
+}
+
+.hr-btn svg { width: 15px; height: 15px; flex: none; }
+
+.hr-btn--solid {
+  color: var(--hr-card);
+  background: var(--hr-fg);
+}
+
+.hr-btn--solid:hover:not(:disabled) { opacity: .9; }
+
+.hr-btn--outline { border-color: var(--hr-border); }
+.hr-btn--outline:hover:not(:disabled) { background: var(--hr-muted); }
+
+.hr-btn--ghost { color: var(--hr-muted-fg); }
+.hr-btn--ghost:hover:not(:disabled) { color: var(--hr-fg); background: var(--hr-muted); }
+
+.hr-btn--sm { height: 28px; padding: 0 9px; font-size: 12px; }
+.hr-btn--icon { width: 28px; height: 28px; padding: 0; }
+
+.hr-btn:disabled { opacity: .5; cursor: not-allowed; }
+
+.hr-btn:focus-visible {
+  outline: 2px solid var(--hr-fg);
+  outline-offset: 2px;
+}

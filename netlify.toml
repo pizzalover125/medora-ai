@@ -1,0 +1,30 @@
+# Ask on Netlify: the pages are static files in public/, every /api/* route
+# is one function (netlify/functions/api.mjs), and what the Flask app kept in
+# JSON files lives in Netlify Blobs.
+
+[build]
+  publish = "public"
+  command = "echo 'no build step'"
+
+[functions]
+  node_bundler = "esbuild"
+  external_node_modules = ["web-push"]
+
+# A caretaker's link: /c/<token> is one static page that reads the token.
+[[redirects]]
+  from = "/c/*"
+  to = "/c.html"
+  status = 200
+
+[[headers]]
+  for = "/sw.js"
+  [headers.values]
+    Cache-Control = "no-cache"
+    Service-Worker-Allowed = "/"
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Referrer-Policy = "no-referrer"
+    X-Content-Type-Options = "nosniff"
+    Permissions-Policy = "camera=(self), microphone=(self), bluetooth=(self)"

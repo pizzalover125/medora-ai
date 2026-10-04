@@ -1,0 +1,13 @@
+__pycache__/
+*.pyc
+.env
+debug_audio/
+events.json
+messages.json
+medicines.json
+news.json
+certs/
+
+# Local Netlify folder
+.netlify
+node_modules/

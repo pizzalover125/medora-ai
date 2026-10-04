@@ -1,0 +1,261 @@
+/* ---------------------------------------------------------------------------
+   The call screen. It takes the whole window at both ends - on a phone
+   because that is what a call looks like, and on his machine because the
+   point of the picture is that it is big enough to see.
+--------------------------------------------------------------------------- */
+
+.call-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  padding:
+    max(20px, env(safe-area-inset-top))
+    max(16px, env(safe-area-inset-right))
+    max(24px, env(safe-area-inset-bottom))
+    max(16px, env(safe-area-inset-left));
+  color: #f4f4f5;
+  background: #0b0b0c;
+  cursor: auto;
+  user-select: none;
+  -webkit-user-select: none;
+  font-family: ui-sans-serif, -apple-system, system-ui, sans-serif;
+}
+
+.call-screen[hidden] { display: none; }
+
+/* The far end, once it arrives. Until then the screen stays dark behind the
+   name, the way a phone does while it rings. */
+.call-screen__remote {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  background: #0b0b0c;
+  transition: opacity 420ms ease, filter 800ms ease;
+}
+
+.call-screen.has-remote .call-screen__remote { opacity: 1; }
+
+/* The picture opens soft and comes into focus as the encoder finds its feet,
+   so the first coarse frames read as arriving rather than as broken. */
+.call-screen.is-soft .call-screen__remote { filter: blur(12px); }
+.call-screen.has-remote .call-screen__avatar { opacity: 0; }
+
+.call-screen__avatar {
+  position: absolute;
+  top: 34%;
+  left: 50%;
+  width: 108px;
+  height: 108px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: rgb(255 255 255 / .09);
+  font-size: 40px;
+  font-weight: 600;
+  line-height: 1;
+  transform: translate(-50%, -50%);
+  transition: opacity 300ms ease;
+}
+
+/* The near end, small, and mirrored - a camera you can see yourself in
+   should behave like a mirror. */
+.call-screen__local {
+  position: absolute;
+  top: max(20px, env(safe-area-inset-top));
+  right: max(16px, env(safe-area-inset-right));
+  width: clamp(96px, 20vw, 168px);
+  aspect-ratio: 3 / 4;
+  object-fit: cover;
+  border: 1px solid rgb(255 255 255 / .16);
+  border-radius: 14px;
+  background: #17171a;
+  box-shadow: 0 10px 30px rgb(0 0 0 / .45);
+  transform: scaleX(-1);
+}
+
+.call-screen__head {
+  position: absolute;
+  top: calc(34% + 86px);
+  left: 0;
+  right: 0;
+  padding: 0 24px;
+  text-align: center;
+}
+
+.call-screen.has-remote .call-screen__head {
+  top: auto;
+  bottom: calc(max(24px, env(safe-area-inset-bottom)) + 124px);
+}
+
+.call-screen__who {
+  margin: 0;
+  font-size: 26px;
+  font-weight: 620;
+  letter-spacing: -.02em;
+  text-shadow: 0 1px 12px rgb(0 0 0 / .5);
+}
+
+.call-screen__status {
+  margin: 6px 0 0;
+  font-size: 14px;
+  opacity: .62;
+  text-shadow: 0 1px 12px rgb(0 0 0 / .5);
+}
+
+.call-screen__status:empty { display: none; }
+
+.call-screen__note {
+  position: relative;
+  max-width: 430px;
+  margin: 0 0 20px;
+  padding: 12px 15px;
+  border-radius: 12px;
+  background: rgb(255 255 255 / .1);
+  font-size: 14px;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.call-screen__note:empty { display: none; }
+
+/* ── the controls ──────────────────────────────────────────────────────── */
+
+.call-screen__controls {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 26px;
+}
+
+.call-button {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.call-button__disc {
+  position: relative;
+  width: 68px;
+  height: 68px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: rgb(255 255 255 / .14);
+  transition: transform 220ms var(--spring, cubic-bezier(.16, 1, .3, 1)),
+              background 180ms ease;
+}
+
+.call-button__disc svg { width: 28px; height: 28px; }
+
+/* The second path a toggle adds is the line through the icon. */
+.call-button__disc svg + svg { position: absolute; opacity: .9; }
+
+.call-button__label {
+  font-size: 13px;
+  font-weight: 600;
+  opacity: .76;
+}
+
+.call-button:hover .call-button__disc { transform: scale(1.06); }
+.call-button:active .call-button__disc { transform: scale(.94); }
+.call-button:focus-visible .call-button__disc {
+  outline: 2px solid rgb(255 255 255 / .7);
+  outline-offset: 3px;
+}
+
+.call-button.is-answer .call-button__disc { background: #35a35f; }
+.call-button.is-end .call-button__disc { background: #d2402a; }
+.call-button.is-end .call-button__disc svg { transform: rotate(134deg); }
+.call-button.is-quiet.is-off .call-button__disc { background: rgb(255 255 255 / .28); }
+
+/* Answering is the one thing that should be hard to miss. */
+.call-screen[data-stage="incoming"] .call-button.is-answer .call-button__disc {
+  animation: call-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes call-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgb(53 163 95 / .5); }
+  60%      { box-shadow: 0 0 0 18px rgb(53 163 95 / 0); }
+}
+
+/* ── the button that starts one ────────────────────────────────────────── */
+
+.call-start {
+  flex: none;
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid rgb(var(--line) / .12);
+  border-radius: 11px;
+  color: inherit;
+  background: transparent;
+  cursor: pointer;
+  transition: background 160ms ease, border-color 160ms ease;
+}
+
+.call-start svg {
+  width: 19px;
+  height: 19px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.call-start:hover,
+.call-start:focus-visible {
+  border-color: rgb(var(--line) / .24);
+  background: rgb(var(--line) / .06);
+  outline: none;
+}
+
+/* ── the line a call leaves in the conversation ────────────────────────── */
+
+.chat-note {
+  align-self: center;
+  max-width: 82%;
+  padding: 5px 11px;
+  border-radius: 9px;
+  background: rgb(var(--line) / .06);
+  font-size: 11.5px;
+  font-weight: 600;
+  text-align: center;
+  opacity: .62;
+}
+
+.chat-note__time { margin-left: 6px; font-weight: 500; opacity: .7; }
+
+@media (max-width: 560px) {
+  .call-screen__avatar { width: 92px; height: 92px; font-size: 34px; }
+  .call-screen__who { font-size: 22px; }
+  .call-screen__controls { gap: 18px; }
+  .call-button__disc { width: 62px; height: 62px; }
+  .call-button__disc svg { width: 25px; height: 25px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .call-screen.is-soft .call-screen__remote { filter: none; }
+  .call-screen__remote,
+  .call-screen__avatar,
+  .call-button__disc { transition-duration: 1ms; }
+  .call-screen[data-stage="incoming"] .call-button.is-answer .call-button__disc {
+    animation: none;
+  }
+}

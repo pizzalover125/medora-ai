@@ -1,0 +1,549 @@
+/* ---------------------------------------------------------------------------
+   Medora, in homeroom's clothes.
+
+   Greyscale only, 4px corners, lowercase chrome, bold numerals, and structure
+   drawn with hairline rules rather than shadows. Every row is a light chip
+   that truncates rather than wraps, so a long medicine name cannot push the
+   layout around.
+--------------------------------------------------------------------------- */
+
+/* The palette and the buttons come from hr.css; this is Medora's own
+   layout on top of them. */
+.win:has(> .win__body.medora) {
+  width: min(94vw, 460px);
+}
+
+.win__body.medora {
+  height: min(440px, calc(100vh - 72px));
+  display: flex;
+  flex-direction: column;
+  justify-items: stretch;
+  gap: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+/* ── head ──────────────────────────────────────────────────────────────── */
+
+.medora__head {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 2px 18px 14px;
+  border-bottom: 1px solid var(--hr-border);
+}
+
+.medora__title {
+  margin: 0;
+  font-size: 21px;
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+  text-transform: lowercase;
+}
+
+.medora__status {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 9px;
+  border: 1px solid var(--hr-border);
+  border-radius: var(--hr-radius);
+  color: var(--hr-muted-fg);
+  background: transparent;
+  font-size: 12px;
+  font-weight: 500;
+  text-transform: lowercase;
+  white-space: nowrap;
+}
+
+.medora__status[data-state='connected'] {
+  color: var(--hr-fg);
+  border-color: var(--hr-fg);
+}
+
+.medora__status-dot {
+  width: 6px;
+  height: 6px;
+  flex: none;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+}
+
+.medora__status[data-state='connected'] .medora__status-dot { background: currentColor; }
+
+.medora__status[data-state='connecting'] .medora__status-dot,
+.medora__status[data-state='reconnecting'] .medora__status-dot {
+  background: currentColor;
+  animation: medora-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes medora-pulse {
+  0%, 100% { opacity: 0.2; }
+  50% { opacity: 1; }
+}
+
+/* ── tabs ──────────────────────────────────────────────────────────────── */
+
+.medora__tabs {
+  flex: none;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 2px;
+  margin: 12px 18px 0;
+  padding: 3px;
+  border-radius: var(--hr-radius);
+  background: var(--hr-muted);
+}
+
+.medora__tab {
+  height: 30px;
+  padding: 0 6px;
+  border: 0;
+  border-radius: calc(var(--hr-radius) - 1px);
+  color: var(--hr-muted-fg);
+  background: transparent;
+  font: 500 13px/1 inherit;
+  text-transform: lowercase;
+  cursor: pointer;
+  transition: background 200ms cubic-bezier(.4, 0, .2, 1), color 200ms;
+}
+
+.medora__tab:hover { color: var(--hr-fg); }
+
+.medora__tab.is-active {
+  color: var(--hr-fg);
+  background: var(--hr-card);
+  box-shadow: 0 1px 2px hsl(0 0% 0% / .08);
+}
+
+.medora__tab:focus-visible {
+  outline: 2px solid var(--hr-fg);
+  outline-offset: 1px;
+}
+
+/* ── body and foot ─────────────────────────────────────────────────────── */
+
+.medora__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px 18px 16px;
+  overflow: auto;
+  scrollbar-width: thin;
+}
+
+.medora__foot {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 18px;
+  border-top: 1px solid var(--hr-border);
+}
+
+.medora__count {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--hr-muted-fg);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  text-transform: lowercase;
+  white-space: nowrap;
+}
+
+.medora__count[data-state='synced'] { color: var(--hr-fg); font-weight: 500; }
+
+.medora__rows {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+}
+
+.medora__empty {
+  flex: 1 1 auto;
+  display: grid;
+  place-items: center;
+  padding: 26px 10px;
+  color: var(--hr-muted-fg);
+  font-size: 13px;
+  text-align: center;
+  text-transform: lowercase;
+}
+
+.medora__section {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.medora__section-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  text-transform: lowercase;
+}
+
+.medora__note {
+  margin: 0;
+  color: var(--hr-muted-fg);
+  font-size: 12px;
+  text-transform: lowercase;
+}
+
+/* ── a row ─────────────────────────────────────────────────────────────── */
+
+.medora-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  min-width: 0;
+  padding: 9px 10px;
+  border: 1px solid var(--hr-border);
+  border-radius: var(--hr-radius);
+  background: color-mix(in srgb, var(--hr-muted) 50%, transparent);
+  transition: background 200ms cubic-bezier(.4, 0, .2, 1);
+}
+
+.medora-row:hover { background: var(--hr-muted); }
+
+/* A dose that is due is the one thing that shouts, and it does it in ink
+   rather than colour. */
+.medora-row.is-due {
+  color: var(--hr-card);
+  background: var(--hr-fg);
+  border-color: var(--hr-fg);
+}
+
+.medora-row.is-due:hover { background: var(--hr-fg); }
+.medora-row.is-due .medora-row__meta,
+.medora-row.is-due .medora-row__day { color: inherit; opacity: .62; }
+
+.medora-row__when {
+  flex: none;
+  min-width: 58px;
+  font-variant-numeric: tabular-nums;
+}
+
+.medora-row__time {
+  display: block;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  text-transform: lowercase;
+}
+
+.medora-row__day {
+  display: block;
+  margin-top: 1px;
+  color: var(--hr-muted-fg);
+  font-size: 11px;
+  line-height: 1.2;
+  text-transform: lowercase;
+}
+
+/* The container a medicine sits in - just the number, so nothing clips. */
+.medora-row__slot {
+  width: 28px;
+  height: 28px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--hr-border);
+  border-radius: var(--hr-radius);
+  background: var(--hr-card);
+  font-size: 13px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.medora-row__copy { min-width: 0; }
+
+.medora-row__name {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+  margin: 0;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.medora-row__name > span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.medora-row__tag {
+  flex: none;
+  color: var(--hr-muted-fg);
+  font-size: 11.5px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.medora-row.is-due .medora-row__tag { color: inherit; opacity: .7; }
+
+.medora-row__meta {
+  margin: 2px 0 0;
+  overflow: hidden;
+  color: var(--hr-muted-fg);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  text-transform: lowercase;
+  white-space: nowrap;
+}
+
+.medora-row__actions { display: flex; gap: 6px; }
+
+/* On an inverted row the buttons invert with it. */
+.medora-row.is-due .hr-btn--solid {
+  color: var(--hr-fg);
+  background: var(--hr-card);
+}
+
+.medora-row.is-due .hr-btn--outline {
+  color: var(--hr-card);
+  border-color: color-mix(in srgb, var(--hr-card) 45%, transparent);
+}
+
+.medora-row.is-due .hr-btn--outline:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--hr-card) 15%, transparent);
+}
+
+/* ── the form ──────────────────────────────────────────────────────────── */
+
+.medora-form { display: grid; gap: 12px; }
+
+.medora-form__field { display: grid; gap: 5px; min-width: 0; }
+
+.medora-form__label {
+  color: var(--hr-muted-fg);
+  font-size: 12px;
+  font-weight: 500;
+  text-transform: lowercase;
+}
+
+.medora-form__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(118px, 1fr));
+  gap: 10px;
+}
+
+/* .win input is centred, uppercase and 20px for the games. */
+.win .medora-form input,
+.win .medora-form select {
+  width: 100%;
+  min-width: 0;
+  max-width: none;
+  height: 38px;
+  padding: 0 11px;
+  border: 1px solid var(--hr-border);
+  border-radius: var(--hr-radius);
+  color: var(--hr-fg);
+  background: var(--hr-card);
+  font: 400 13.5px/1 ui-sans-serif, -apple-system, system-ui, sans-serif;
+  letter-spacing: normal;
+  text-align: left;
+  text-transform: none;
+  appearance: none;
+  opacity: 1;
+  color-scheme: light dark;
+  transition: border-color 200ms;
+}
+
+.win .medora-form select {
+  padding-right: 26px;
+  background-image:
+    linear-gradient(45deg, transparent 50%, currentColor 50%),
+    linear-gradient(135deg, currentColor 50%, transparent 50%);
+  background-position: right 13px top 50%, right 8px top 50%;
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+  cursor: pointer;
+}
+
+.win .medora-form input::placeholder { color: var(--hr-muted-fg); opacity: 1; }
+
+.win .medora-form input:focus,
+.win .medora-form select:focus {
+  border-color: var(--hr-fg);
+  outline: none;
+}
+
+.medora-form__days {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.medora-form__day {
+  height: 34px;
+  padding: 0;
+  border: 1px solid var(--hr-border);
+  border-radius: var(--hr-radius);
+  color: var(--hr-muted-fg);
+  background: var(--hr-card);
+  font: 500 12px/1 ui-sans-serif, -apple-system, system-ui, sans-serif;
+  text-transform: lowercase;
+  cursor: pointer;
+  transition: background 200ms, color 200ms, border-color 200ms;
+}
+
+.medora-form__day:hover { background: var(--hr-muted); }
+
+.medora-form__day.is-on {
+  color: var(--hr-card);
+  background: var(--hr-fg);
+  border-color: var(--hr-fg);
+}
+
+.medora-form__error {
+  min-height: 16px;
+  color: var(--hr-fg);
+  font-size: 12px;
+  font-weight: 500;
+  text-transform: lowercase;
+}
+
+/* ── the dispenser ─────────────────────────────────────────────────────── */
+
+.medora-pair {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  padding: 20px 14px;
+  border: 1px solid var(--hr-border);
+  border-radius: var(--hr-radius);
+  text-align: center;
+}
+
+.medora-pair__status {
+  margin: 0;
+  max-width: 100%;
+  overflow: hidden;
+  color: var(--hr-muted-fg);
+  font-size: 12.5px;
+  text-overflow: ellipsis;
+  text-transform: lowercase;
+  white-space: nowrap;
+}
+
+.medora-pair__hint {
+  margin: 0;
+  color: var(--hr-muted-fg);
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+
+.medora-pair__hint code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  word-break: break-all;
+}
+
+/* ── the checks ────────────────────────────────────────────────────────── */
+
+.medora-test {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--hr-border);
+  border-radius: var(--hr-radius);
+}
+
+.medora-test[data-status='running'],
+.medora-test[data-status='waiting'] { border-color: var(--hr-fg); }
+
+.medora-test__copy { min-width: 0; }
+
+.medora-test__name {
+  margin: 0;
+  overflow: hidden;
+  font-size: 13px;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  text-transform: lowercase;
+  white-space: nowrap;
+}
+
+.medora-test__detail {
+  margin: 1px 0 0;
+  overflow: hidden;
+  color: var(--hr-muted-fg);
+  font-size: 11.5px;
+  text-overflow: ellipsis;
+  text-transform: lowercase;
+  white-space: nowrap;
+}
+
+.medora-test__side { display: flex; align-items: center; gap: 6px; }
+
+.medora-test__badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 22px;
+  padding: 0 7px;
+  border: 1px solid var(--hr-border);
+  border-radius: var(--hr-radius);
+  color: var(--hr-muted-fg);
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: lowercase;
+  white-space: nowrap;
+}
+
+.medora-test__badge svg { width: 11px; height: 11px; }
+
+.medora-test[data-status='pass'] .medora-test__badge {
+  color: var(--hr-card);
+  background: var(--hr-fg);
+  border-color: var(--hr-fg);
+}
+
+.medora-test[data-status='fail'] .medora-test__badge,
+.medora-test[data-status='warn'] .medora-test__badge {
+  color: var(--hr-fg);
+  border-color: var(--hr-fg);
+  font-weight: 600;
+}
+
+/* ── motion ────────────────────────────────────────────────────────────── */
+
+@keyframes medora-fade-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.medora-row,
+.medora-test {
+  animation: medora-fade-up 380ms ease-out backwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .medora-row,
+  .medora-test { animation: none; }
+  .medora__status-dot { animation: none; }
+}
+
+@media (max-width: 560px) {
+  .win__body.medora { height: min(410px, calc(100vh - 64px)); }
+  .medora__head, .medora__body, .medora__foot { padding-left: 14px; padding-right: 14px; }
+  .medora__tabs { margin-left: 14px; margin-right: 14px; }
+}

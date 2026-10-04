@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#efece6">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <title>Messages</title>
+  <link rel="icon" href="/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/icon-192.png">
+  <link rel="stylesheet" href="/static/style.css">
+  <link rel="stylesheet" href="/static/games.css">
+  <link rel="stylesheet" href="/static/messages.css">
+  <link rel="stylesheet" href="/static/call.css">
+</head>
+<body class="thread-page">
+
+  <header class="thread-page__head">
+    <span class="msg-avatar" id="avatar">·</span>
+    <div class="thread-page__copy">
+      <p class="thread-page__eyebrow">Messaging</p>
+      <h1 class="thread-page__title" id="title">Opening…</h1>
+    </div>
+    <span class="thread-page__you" id="you"></span>
+    <button class="call-start" id="call" type="button" title="Video call" disabled
+            aria-label="Start a video call">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M4.5 7.5h9a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-9a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2Zm11 3.2 4-2.4v7.4l-4-2.4"></path>
+      </svg>
+    </button>
+  </header>
+
+  <div class="care-banner" id="alerts" hidden>
+    <p class="care-banner__text" id="alerts-text"></p>
+    <button class="care-banner__button" id="alerts-button" type="button">Turn on</button>
+  </div>
+
+  <nav class="care-tabs" id="tabs" role="tablist" aria-label="Views" hidden>
+    <button class="care-tab" type="button" role="tab" data-tab="messages" aria-selected="true">Messages</button>
+    <button class="care-tab" type="button" role="tab" data-tab="today" aria-selected="false">Today</button>
+  </nav>
+
+  <section class="care-today" id="today" aria-label="Today" hidden></section>
+
+  <main class="chat-log" id="log" role="log" aria-live="polite" aria-label="Messages">
+    <div class="msg-loading">Opening the conversation…</div>
+  </main>
+
+  <div class="msg-status" id="status" role="alert"></div>
+
+  <form class="msg-composer" id="composer">
+    <input class="msg-composer__input" id="text" type="text" maxlength="600"
+           autocomplete="off" placeholder="Write a message…" aria-label="Message" disabled>
+    <button class="msg-composer__send" type="submit" disabled>Send</button>
+  </form>
+
+  <script src="/static/push.js"></script>
+  <script src="/static/call.js"></script>
+  <script src="/static/contact.js"></script>
+</body>
+</html>
