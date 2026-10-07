@@ -20,6 +20,7 @@
   <link rel="stylesheet" href="/static/medora.css">
   <link rel="stylesheet" href="/static/news.css">
   <link rel="stylesheet" href="/static/captions.css">
+  <link rel="stylesheet" href="/static/heart.css">
 </head>
 <body data-state="idle">
 
@@ -100,6 +101,14 @@
       </svg>
     </button>
 
+    <button class="app-dock__item" type="button" data-app="heart"
+            data-tooltip="Heart rate" aria-label="Heart rate" aria-pressed="false">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M12 20.25s-7.75-4.7-7.75-10.4A4.35 4.35 0 0 1 12 7.1a4.35 4.35 0 0 1 7.75 2.75c0 5.7-7.75 10.4-7.75 10.4Z"></path>
+        <path d="M7 12.25h2.25l1.25-2.25 2 4 1.25-1.75H17"></path>
+      </svg>
+    </button>
+
     <button class="app-dock__item" type="button" data-app="news"
             data-tooltip="News" aria-label="News" aria-pressed="false">
       <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -120,6 +129,8 @@
   <script src="/static/messages.js"></script>
   <script src="/static/medora.js"></script>
   <script src="/static/news.js"></script>
+  <script src="/static/pulse.js"></script>
+  <script src="/static/heart.js"></script>
   <script src="/static/dock.js"></script>
   <script src="/static/app.js"></script>
 </body>

@@ -1,0 +1,151 @@
+/* ---------------------------------------------------------------------------
+   The heart rate window. Same card and ink as the others; the one colour is
+   the pulse itself.
+--------------------------------------------------------------------------- */
+
+.win__body.heart {
+  --heart-ink: #b4452f;
+  justify-items: stretch;
+  gap: 0;
+  padding: 0 22px 20px;
+}
+
+@media (prefers-color-scheme: dark) {
+  .win__body.heart { --heart-ink: #ff7a63; }
+}
+
+.heart__title {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  opacity: .55;
+}
+
+.heart__reading {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.heart__number {
+  min-width: 2.2ch;
+  font-size: 64px;
+  font-weight: 650;
+  line-height: 1;
+  letter-spacing: -.03em;
+  font-variant-numeric: tabular-nums;
+  transition: opacity 200ms var(--swift);
+}
+
+/* A live number is still settling; the final one is solid. */
+.heart__reading[data-live="true"] .heart__number { opacity: .55; }
+
+.heart__unit { font-size: 15px; opacity: .6; }
+
+.heart__wave {
+  display: block;
+  width: 100%;
+  height: 72px;
+  margin-top: 12px;
+  border-radius: 10px;
+  background: rgb(var(--line) / .04);
+}
+
+.heart__track {
+  height: 6px;
+  margin-top: 12px;
+  border-radius: 3px;
+  background: rgb(var(--line) / .08);
+  overflow: hidden;
+}
+
+.heart__bar {
+  height: 100%;
+  border-radius: inherit;
+  background: var(--heart-ink);
+  transform-origin: left;
+  transform: scaleX(var(--done, 0));
+}
+
+.heart__status {
+  min-height: 2.8em;
+  margin: 12px 0 0;
+  font-size: 17px;
+  line-height: 1.4;
+}
+
+.heart[data-state="done"] .heart__status { font-weight: 600; }
+.heart[data-state="unclear"] .heart__status,
+.heart[data-state="blocked"] .heart__status { color: var(--heart-ink); }
+
+/* Before a finger lands, the heart beats gently to say "here". */
+.heart[data-state="waiting"] .heart__wave,
+.heart[data-state="starting"] .heart__wave {
+  background:
+    no-repeat center / 34px
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23b4452f'%3E%3Cpath d='M12 20.5s-7.5-4.6-7.5-10.2A4.3 4.3 0 0 1 12 7.6a4.3 4.3 0 0 1 7.5 2.7c0 5.6-7.5 10.2-7.5 10.2Z'/%3E%3C/svg%3E"),
+    rgb(var(--line) / .04);
+  animation: heart-beat 1.1s ease-in-out infinite;
+}
+
+@keyframes heart-beat {
+  0%, 100% { background-size: 34px, auto; }
+  14% { background-size: 40px, auto; }
+  28% { background-size: 34px, auto; }
+  42% { background-size: 38px, auto; }
+}
+
+.heart__again {
+  justify-self: start;
+  margin-top: 10px;
+  padding: 10px 18px;
+  border: 0;
+  border-radius: 12px;
+  color: var(--card);
+  background: var(--card-ink);
+  font: inherit;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.heart__again[hidden] { display: none; }
+.heart__again:focus-visible { outline: 2px solid var(--heart-ink); outline-offset: 2px; }
+
+.heart__history { margin-top: 16px; }
+.heart__history[hidden] { display: none; }
+
+.heart__history-title {
+  margin-bottom: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  opacity: .5;
+}
+
+.heart__pasts { margin: 0; padding: 0; list-style: none; }
+
+.heart__past {
+  display: flex;
+  justify-content: space-between;
+  padding: 7px 0;
+  border-top: 1px solid rgb(var(--line) / .08);
+  font-size: 15px;
+}
+
+.heart__past-when { opacity: .65; }
+.heart__past-bpm { font-weight: 600; font-variant-numeric: tabular-nums; }
+
+.heart__note {
+  margin: 14px 0 0;
+  font-size: 12px;
+  line-height: 1.4;
+  opacity: .55;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .heart[data-state="waiting"] .heart__wave,
+  .heart[data-state="starting"] .heart__wave { animation: none; }
+}

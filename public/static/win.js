@@ -6,6 +6,7 @@
    below is measured against the real content, not an empty scaffold. Returns
    whatever build() returned (a stop/teardown function, typically).
    Win.close()
+   Win.refit()   after the content grows, nudge the window back on screen
 --------------------------------------------------------------------------- */
 
 window.Win = (() => {
@@ -223,6 +224,9 @@ window.Win = (() => {
     handle.addEventListener('pointerdown', (e) => {
       if (e.target.closest('.win__close')) return;
       e.preventDefault();
+      // refit() may have moved the window since the last drag.
+      x = parseFloat(el.style.getPropertyValue('--x')) || 0;
+      y = parseFloat(el.style.getPropertyValue('--y')) || 0;
       // Set the drag state first: capture is an optimisation, and if it throws
       // the drag must still work rather than silently doing nothing.
       el.classList.add('is-dragging');
@@ -253,9 +257,28 @@ window.Win = (() => {
     handle.addEventListener('pointercancel', end);
   }
 
+  /* A window is placed for the size it opened at. One that grows afterwards
+     grows both ways from its middle, and can push its top off the screen. */
+  function refit() {
+    if (!win) return;
+    const margin = window.innerWidth <= 560 ? 8 : 16;
+    const r = win.getBoundingClientRect();
+    let dx = 0, dy = 0;
+    if (r.top < margin) dy = margin - r.top;
+    else if (r.bottom > window.innerHeight - margin) dy = Math.max(margin - r.top, window.innerHeight - margin - r.bottom);
+    if (r.left < margin) dx = margin - r.left;
+    else if (r.right > window.innerWidth - margin) dx = Math.max(margin - r.left, window.innerWidth - margin - r.right);
+    if (!dx && !dy) return;
+    const x = (parseFloat(win.style.getPropertyValue('--x')) || 0) + dx;
+    const y = (parseFloat(win.style.getPropertyValue('--y')) || 0) + dy;
+    win.style.setProperty('--x', Math.round(x) + 'px');
+    win.style.setProperty('--y', Math.round(y) + 'px');
+  }
+
   return {
     open,
     close,
+    refit,
     flash,
     tone,
     get isOpen() { return !!win; },

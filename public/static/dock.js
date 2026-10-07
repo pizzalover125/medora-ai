@@ -35,6 +35,8 @@
       Medora.open();
     } else if (app === 'news') {
       News.open();
+    } else if (app === 'heart') {
+      Heart.open();
     }
   }));
 
@@ -46,6 +48,7 @@
     else if (label === 'Messages') select('messages');
     else if (label === 'Medora') select('medora');
     else if (label === 'News') select('news');
+    else if (label === 'Heart') select('heart');
     else if (gameLabels.has(label)) select('games');
   });
 })();

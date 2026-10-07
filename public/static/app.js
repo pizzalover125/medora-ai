@@ -331,6 +331,12 @@
         window.News.open({category: data.category || null, story: data.story || null});
       }
 
+      // The spoken line says where the finger goes; the window does the rest
+      // and says the number itself when it has one.
+      if (data.action === 'heart' && window.Heart) {
+        window.Heart.open();
+      }
+
       if (data.action === 'news-settings' && window.News) {
         window.News.open({view: 'settings'});
       }
