@@ -9,6 +9,11 @@
 import { BrainError, chat } from './brain.mjs';
 
 export const SILENCE_PEAK = 0.005;
+
+/* Measured on the proxy (Oct 2026): about 1.1 s a question against 3 s for
+   the chat model, and the only fast one that kept quiet on a silent clip
+   rather than inventing a question. */
+const MODEL = 'openai/gpt-audio-mini';
 const NOTHING = 'NO_SPEECH';
 
 const HALLUCINATIONS = new Set([
@@ -34,7 +39,7 @@ export async function transcribe(bytes, mimeType) {
       { type: 'text', text: 'Transcribe this recording.' },
       { type: 'input_audio', input_audio: { data: Buffer.from(bytes).toString('base64'), format } },
     ] },
-  ], { model: process.env.HACKCLUB_STT_MODEL || undefined, temperature: 0, maxTokens: 300 });
+  ], { model: process.env.HACKCLUB_STT_MODEL || MODEL, temperature: 0, maxTokens: 300 });
 
   let text = (msg.content || '').trim().replace(/^["'“]+|["'”]+$/g, '').trim();
   if (!text || text.includes(NOTHING)) return '';

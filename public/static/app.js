@@ -82,6 +82,78 @@
     captionTimer = setTimeout(hideCaptions, CAPTION_HOLD_MS);
   }
 
+  /* ── live captions ────────────────────────────────────────────────────── */
+  /* The browser's own recogniser writes the words up while they are still
+     being said. It is only a preview: the recording still goes to the server,
+     and what the server heard replaces it. Phones and tablets are left out -
+     there the recogniser and the recorder can fight over the one microphone,
+     and a silent recording is far worse than a slower caption. */
+
+  const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const mobile = /iP(hone|ad|od)|Android/.test(navigator.userAgent) ||
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  let recognition = null;
+  let liveText = '';
+
+  function startLiveCaptions() {
+    liveText = '';
+    if (!Recognition || mobile) return;
+    try {
+      const r = new Recognition();
+      r.lang = 'en-US';
+      r.continuous = true;
+      r.interimResults = true;
+      r.onresult = (e) => {
+        if (recognition !== r || state !== 'listening') return;
+        liveText = Array.from(e.results, (res) => res[0].transcript).join('').trim();
+        if (liveText) captionLine(heardLine, liveText);
+      };
+      r.onerror = r.onend = () => { if (recognition === r) recognition = null; };
+      r.start();
+      recognition = r;
+    } catch (err) {
+      console.warn('[ask] live captions unavailable', err);
+      recognition = null;
+    }
+  }
+
+  function stopLiveCaptions() {
+    const r = recognition;
+    recognition = null;
+    if (r) { try { r.abort(); } catch (_) { /* already stopped */ } }
+  }
+
+  /* /api/ask streams two lines: what was heard, as soon as it is known, then
+     the reply. Anything that fails before the words are known is one plain
+     JSON body instead. */
+  async function readAsk(res, onHeard) {
+    if (!(res.headers.get('content-type') || '').includes('ndjson') || !res.body) {
+      const data = await res.json();
+      return {data, ok: res.ok, status: res.status};
+    }
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffered = '';
+    let last = null;
+    for (;;) {
+      const {value, done} = await reader.read();
+      buffered += decoder.decode(value || new Uint8Array(), {stream: !done});
+      let nl;
+      while ((nl = buffered.indexOf('\n')) >= 0) {
+        const text = buffered.slice(0, nl).trim();
+        buffered = buffered.slice(nl + 1);
+        if (!text) continue;
+        const msg = JSON.parse(text);
+        if ('heard' in msg) onHeard(msg.heard);
+        else last = msg;
+      }
+      if (done) break;
+    }
+    if (!last) throw new Error('the reply ended early');
+    const status = last.status || 200;
+    return {data: last, ok: status < 400, status};
+  }
+
   /* ── the animation loop ───────────────────────────────────────────────── */
   /* One rAF loop owns --amp for the whole page. Attack is fast so the orb
      answers your voice immediately; release is slow so it never flickers. */
@@ -174,14 +246,17 @@
     setState('listening');
     captionLine(heardLine, 'Listening…', true);
     captionLine(saidLine, '');
+    startLiveCaptions();
   }
 
   function stopListening() {
     clearTimeout(stopTimer);
+    stopLiveCaptions();
     if (recorder && recorder.state !== 'inactive') recorder.stop();
   }
 
   async function handleClip() {
+    stopLiveCaptions();
     const duration = performance.now() - startedAt;
     const chunkCount = chunks.length;
     const blob = new Blob(chunks, { type: recorder.mimeType || 'audio/webm' });
@@ -196,7 +271,9 @@
     }
 
     setState('thinking');
-    captionLine(heardLine, '…', true);
+    // Keep the live words up while the server listens to the recording.
+    if (liveText) captionLine(heardLine, liveText, true);
+    else captionLine(heardLine, '…', true);
     console.log('[ask] recorded %dms, %d bytes, type=%s, chunks=%d, micPeak=%s',
                 Math.round(duration), blob.size, blob.type, chunkCount,
                 sessionPeak.toFixed(4));
@@ -224,9 +301,12 @@
         body: form,
         signal: inflight.signal,
       });
-      const data = await res.json();
+      const reply = await readAsk(res, (heard) => {
+        if (state === 'thinking') captionLine(heardLine, heard);
+      });
+      const data = reply.data;
       inflight = null;
-      console.log('[ask] %d %o', res.status, data);
+      console.log('[ask] %d %o', reply.status, data);
       captionLine(heardLine, data.question || '');
 
       if (data.action === 'game' && window.Games) {
@@ -267,7 +347,7 @@
       }
 
       if (data.speak) {
-        if (res.ok) speak(data.speak);
+        if (reply.ok) speak(data.speak);
         else fail(data.speak);
       } else {
         fail("Something went wrong. Please try again.");

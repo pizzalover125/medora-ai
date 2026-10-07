@@ -462,6 +462,31 @@ route('POST', '/ask', async ({ req, context }) => {
   console.log('heard:', JSON.stringify(question));
   if (!question) return json({ error: 'silence', speak: "I didn't hear a question. Please try again." });
 
+  // The words go out the moment they are known, so the captions show the
+  // question while the answer is still being worked out. Two lines of JSON:
+  // {heard}, then the reply with the status it would have had on its own.
+  const encoder = new TextEncoder();
+  const line = (data) => encoder.encode(`${JSON.stringify(data)}\n`);
+  const stream = new ReadableStream({
+    async start(controller) {
+      controller.enqueue(line({ heard: question }));
+      let reply;
+      try {
+        reply = await answerFor(question, context);
+      } catch (error) {
+        console.error('ask failed', error);
+        reply = json({ error: 'server', question, speak: 'Something went wrong. Please try again.' }, 500);
+      }
+      controller.enqueue(line({ ...(await reply.json()), status: reply.status }));
+      controller.close();
+    },
+  });
+  return new Response(stream, {
+    headers: { 'Content-Type': 'application/x-ndjson', 'Cache-Control': 'no-store' },
+  });
+});
+
+async function answerFor(question, context) {
   const game = intents.matchGame(question);
   if (game) return json({ action: 'game', game: game[0], question, speak: `Opening ${game[1]}.` });
 
@@ -502,7 +527,7 @@ route('POST', '/ask', async ({ req, context }) => {
       : "I'm having trouble thinking right now. Please try again in a moment.";
     return json({ error: 'brain', question, speak }, 502);
   }
-});
+}
 
 /* ── dispatch ────────────────────────────────────────────────────────── */
 
