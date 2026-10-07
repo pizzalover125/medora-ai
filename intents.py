@@ -1,5 +1,3 @@
-"""Spoken commands the assistant handles itself, without asking the model."""
-
 import re
 
 GAMES = {

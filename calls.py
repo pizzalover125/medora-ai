@@ -1,13 +1,3 @@
-"""Video calls between the person using the assistant and one contact.
-
-Only the signalling lives here: the offer, the answer, and the network
-candidates the two browsers need to find each other. The picture and the
-sound go straight between them and never pass through this process, which is
-why this is a dict in memory rather than another JSON file - a call is over
-in minutes and means nothing afterwards. What survives it is one line in the
-conversation, written when it ends.
-"""
-
 import datetime
 import logging
 import os

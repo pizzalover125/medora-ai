@@ -1,10 +1,3 @@
-"""On-device speech-to-text with faster-whisper.
-
-Nothing leaves the machine here: the model runs locally on CPU (CTranslate2),
-so the recorded audio never touches a network. The model is loaded once,
-lazily, behind a lock because Flask serves requests from multiple threads.
-"""
-
 import collections
 import io
 import logging

@@ -1,7 +1,3 @@
-"""Calendar events - stored in a local JSON file, offered to the model as
-tools it may call whenever the question is about creating, changing, or
-looking up something on the calendar."""
-
 import datetime
 import json
 import logging

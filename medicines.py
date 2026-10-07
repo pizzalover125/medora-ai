@@ -1,17 +1,3 @@
-"""The medicine schedule Medora keeps - stored in a local JSON file, and
-offered to the model as tools it may call whenever the question is about
-what to take, when to take it, or what has already been taken.
-
-The dispenser itself is reached over Bluetooth by the browser
-(static/medora.js). This module is only the schedule both ends agree on:
-the app writes it here, syncs it to the device, and posts back whatever
-the device resolved on its own.
-
-A dose is identified the same way at both ends - by its container and its
-occurrence minute, which is wall-clock minutes since 1970 in local time.
-That is what the device stores, so nothing has to agree about time zones.
-"""
-
 import datetime
 import json
 import logging

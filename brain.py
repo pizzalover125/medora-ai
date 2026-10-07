@@ -1,5 +1,3 @@
-"""Question answering via the Hack Club AI API (OpenAI-compatible proxy)."""
-
 import datetime
 import json
 import logging

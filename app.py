@@ -1,5 +1,3 @@
-"""Alexa for Seniors - one button, one answer."""
-
 import importlib.util
 import logging
 import os

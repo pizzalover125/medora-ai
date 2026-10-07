@@ -1,15 +1,3 @@
-"""The news, answered without the model.
-
-Headlines come from the outlets' own RSS feeds - no API key and no account,
-the same way the forecast comes from Open-Meteo. Every category is read from
-two outlets, so one of them being down, or simply quiet, does not empty the
-app.
-
-What is read aloud is only ever the headlines: three of them, then more of a
-story if it is asked for. A senior listening to a list cannot scroll back, so
-the list stays short and the app holds the rest.
-"""
-
 import datetime
 import hashlib
 import html

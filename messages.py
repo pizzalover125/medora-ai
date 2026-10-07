@@ -1,12 +1,3 @@
-"""Messages between the person using the assistant and the people who check in
-on him.
-
-One JSON file holds every thread. The dock app is his end of each
-conversation; /grandson, /son and the other contact pages are the other end,
-so showing this to someone needs nothing but a second browser tab - or a
-phone on the same wifi.
-"""
-
 import datetime
 import json
 import logging

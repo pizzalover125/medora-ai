@@ -1,10 +1,3 @@
-"""The forecast, answered without the model.
-
-Location comes from the caller's network, the forecast from Open-Meteo. No
-API key, no account. The spoken line covers today only - the window shows the
-whole week, which is a lot to listen to but nothing to look at.
-"""
-
 import datetime
 import logging
 import threading

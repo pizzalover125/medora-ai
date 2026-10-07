@@ -1,5 +1,3 @@
-"""Web search through Exa, exposed to the model as a tool it may choose to call."""
-
 import concurrent.futures
 import logging
 import os
