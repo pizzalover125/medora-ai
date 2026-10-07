@@ -15,7 +15,6 @@ import * as medicines from '../../src/server/medicines.mjs';
 import * as messages from '../../src/server/messages.mjs';
 import * as news from '../../src/server/news.mjs';
 import * as push from '../../src/server/push.mjs';
-import * as store from '../../src/server/store.mjs';
 import { HttpError } from '../../src/server/store.mjs';
 import * as stt from '../../src/server/stt.mjs';
 import * as weather from '../../src/server/weather.mjs';
@@ -97,34 +96,6 @@ route('GET', '/health', async () => json({
 route('GET', '/weather', async ({ req, context }) => {
   auth.requireSenior(req);
   return json(await weather.forecast(context));
-});
-
-/* ── heart rate ──────────────────────────────────────────────────────── */
-/* Only the senior's own device measures, so one key read-modify-written is
-   safe here (see update() in store.mjs). */
-
-const HEART_KEEP = 60;
-
-route('GET', '/heart', async ({ req }) => {
-  auth.requireSenior(req);
-  return json({ readings: (await store.read('heart', { readings: [] })).readings });
-});
-
-route('POST', '/heart', async ({ req }) => {
-  auth.requireSenior(req);
-  const d = await body(req);
-  const bpm = d && Math.round(Number(d.bpm));
-  const quality = d && Number(d.quality);
-  if (!Number.isFinite(bpm) || bpm < 30 || bpm > 220) {
-    throw new HttpError(400, 'invalid_bpm', 'That does not look like a heart rate.');
-  }
-  const reading = { at: new Date().toISOString(), bpm,
-                    quality: Number.isFinite(quality) ? Math.max(0, Math.min(1, quality)) : null };
-  const readings = await store.update('heart', { readings: [] }, (value) => {
-    value.readings = [...(value.readings || []), reading].slice(-HEART_KEEP);
-    return value.readings;
-  });
-  return json({ reading, readings });
 });
 
 route('GET', '/events', async ({ req }) => {
@@ -527,11 +498,6 @@ async function answerFor(question, context) {
       return json({ error: 'weather', question,
                     speak: "I can't get the forecast just now. Please try again in a moment." }, 502);
     }
-  }
-
-  if (intents.matchHeart(question)) {
-    return json({ action: 'heart', question,
-                  speak: "Let's check your heart rate. Gently cover the camera with your fingertip and hold still." });
   }
 
   const medora = intents.matchMedora(question);

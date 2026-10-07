@@ -68,18 +68,6 @@ const MEDORA_LIST = new RegExp(String.raw`\b(?:read|list|tell me|say|go through|
   String.raw`(?:upcoming|next|remaining|scheduled|today'?s)?\s*` +
   String.raw`(?:doses|dose schedule|schedule|medicines|medications)\b`, 'i');
 
-/* "Check my heart rate", "take my pulse". Only a request to measure - a
-   question about heart rates ("what is a normal pulse?") goes to the model.
-   Netlify only: the Flask app has no heart rate window. */
-const HEART = new RegExp(String.raw`^(?:(?:please|hey|okay|ok)\s+)?` +
-  String.raw`(?:(?:can|could|would) you\s+|i(?:'d| would) like to\s+|i want to\s+|let'?s\s+|lets\s+)?` +
-  String.raw`(?:check|measure|take|test|read|open|show|start|get)\s+(?:me\s+)?` +
-  String.raw`(?:(?:(?:my|the|a)\s+)?(?:heart\s?rate|heart\s?beat|pulse)\b|my\s+heart(?:\s+(?:please|now))?$)`, 'i');
-
-export function matchHeart(text) {
-  return HEART.test(bareOf(text));
-}
-
 export function matchMedora(text) {
   const bare = bareOf(text);
   if (!bare) return null;
