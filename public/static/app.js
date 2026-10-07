@@ -46,9 +46,40 @@
   function setState(next) {
     state = next;
     body.dataset.state = next;
+    if (next === 'idle') holdCaptions();
+    else clearTimeout(captionTimer);
     if (next === 'idle' || next === 'blocked') {
       queueMicrotask(flushReminders);
     }
+  }
+
+  /* ── captions ─────────────────────────────────────────────────────────── */
+  /* What was heard and what is being said, along the bottom of the screen.
+     The answer is captioned a sentence at a time, as it is spoken. */
+
+  const CAPTION_HOLD_MS = 8000;   // time to finish reading once the voice stops
+
+  const captions = document.getElementById('captions');
+  const heardLine = captions.querySelector('.captions__line--you');
+  const saidLine  = captions.querySelector('.captions__line--assistant');
+  let captionTimer = null;
+
+  function captionLine(line, text, pending = false) {
+    const el = line.querySelector('.captions__text');
+    line.hidden = !text;
+    el.textContent = text || '';
+    el.dataset.pending = pending;
+    captions.dataset.shown = !heardLine.hidden || !saidLine.hidden;
+  }
+
+  function hideCaptions() {
+    clearTimeout(captionTimer);
+    captions.dataset.shown = false;
+  }
+
+  function holdCaptions() {
+    clearTimeout(captionTimer);
+    captionTimer = setTimeout(hideCaptions, CAPTION_HOLD_MS);
   }
 
   /* ── the animation loop ───────────────────────────────────────────────── */
@@ -141,6 +172,8 @@
 
     stopTimer = setTimeout(stopListening, MAX_CLIP_MS);
     setState('listening');
+    captionLine(heardLine, 'Listening…', true);
+    captionLine(saidLine, '');
   }
 
   function stopListening() {
@@ -158,10 +191,12 @@
     // A stray double-tap isn't a question. Go quiet rather than scold.
     if (duration < MIN_CLIP_MS || blob.size < 1024) {
       setState('idle');
+      hideCaptions();
       return;
     }
 
     setState('thinking');
+    captionLine(heardLine, '…', true);
     console.log('[ask] recorded %dms, %d bytes, type=%s, chunks=%d, micPeak=%s',
                 Math.round(duration), blob.size, blob.type, chunkCount,
                 sessionPeak.toFixed(4));
@@ -192,6 +227,7 @@
       const data = await res.json();
       inflight = null;
       console.log('[ask] %d %o', res.status, data);
+      captionLine(heardLine, data.question || '');
 
       if (data.action === 'game' && window.Games) {
         window.Games.open(data.game);
@@ -240,6 +276,7 @@
       inflight = null;
       if (err.name === 'AbortError') return;   // the user cancelled; stay quiet
       console.error('request failed', err);
+      captionLine(heardLine, '');
       fail("I can't reach my connection right now. Please try again.");
     }
   }
@@ -322,7 +359,11 @@
   }
 
   function speak(text) {
-    if (!('speechSynthesis' in window)) { setState('idle'); return; }
+    if (!('speechSynthesis' in window)) {
+      captionLine(saidLine, text);
+      setState('idle');
+      return;
+    }
 
     speechSynthesis.cancel();
     setState('speaking');
@@ -330,6 +371,7 @@
 
     const queue = sentences(text);
     let done = 0;
+    captionLine(saidLine, queue[0]);
 
     queue.forEach((part) => {
       const u = new SpeechSynthesisUtterance(part);
@@ -341,6 +383,7 @@
 
       // Each word kicks the envelope, so the orb pulses in time with speech.
       u.onboundary = () => { speechAmp = Math.min(1, speechAmp + 0.42); };
+      u.onstart = () => { if (state === 'speaking') captionLine(saidLine, part); };
       u.onend = u.onerror = () => {
         if (++done >= queue.length && state === 'speaking') {
           speechAmp = 0;
@@ -399,6 +442,7 @@
     const lines = ready.filter((item) => item.say).map((item) => item.say);
     const due = ready.filter((item) => !item.say);
     if (due.length) lines.push(reminderMessage(due));
+    captionLine(heardLine, '');
     speak(lines.join(' '));
   }
 
@@ -483,10 +527,12 @@
       case 'thinking':
         if (inflight) inflight.abort();
         setState('idle');
+        hideCaptions();
         break;
       case 'speaking':
         stopSpeaking();
         setState('idle');
+        hideCaptions();
         break;
       case 'blocked':
         startListening();   // let them retry after granting permission

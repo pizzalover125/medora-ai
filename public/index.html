@@ -19,6 +19,7 @@
   <link rel="stylesheet" href="/static/hr.css">
   <link rel="stylesheet" href="/static/medora.css">
   <link rel="stylesheet" href="/static/news.css">
+  <link rel="stylesheet" href="/static/captions.css">
 </head>
 <body data-state="idle">
 
@@ -33,6 +34,15 @@
     <span class="orb__spark" aria-hidden="true"></span>
     <span class="orb__core" aria-hidden="true"></span>
   </button>
+
+  <div id="captions" class="captions" data-shown="false" aria-hidden="true">
+    <p class="captions__line captions__line--you" hidden>
+      <span class="captions__who">You</span><span class="captions__text"></span>
+    </p>
+    <p class="captions__line captions__line--assistant" hidden>
+      <span class="captions__who">Assistant</span><span class="captions__text"></span>
+    </p>
+  </div>
 
   <nav class="app-dock" aria-label="Apps">
     <button class="app-dock__item is-active" type="button" data-app="ask"

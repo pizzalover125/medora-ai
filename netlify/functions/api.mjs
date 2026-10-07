@@ -500,7 +500,7 @@ route('POST', '/ask', async ({ req, context }) => {
     const speak = error.message === 'rate limited'
       ? 'I need a short rest. Please try again in a few minutes.'
       : "I'm having trouble thinking right now. Please try again in a moment.";
-    return json({ error: 'brain', speak }, 502);
+    return json({ error: 'brain', question, speak }, 502);
   }
 });
 
