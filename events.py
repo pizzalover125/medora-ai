@@ -124,7 +124,6 @@ NAMES = {t["function"]["name"] for t in TOOLS}
 _DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 _TIME_RE = re.compile(r"^([01]\d|2[0-3]):([0-5]\d)$")
 
-
 def _valid_date(s: str) -> bool:
     if not s or not _DATE_RE.match(s):
         return False
@@ -134,10 +133,8 @@ def _valid_date(s: str) -> bool:
     except ValueError:
         return False
 
-
 def _sort_key(event):
     return (event["date"], event.get("time") or "99:99")
-
 
 def _load():
     try:
@@ -149,19 +146,14 @@ def _load():
         log.error("could not read %s: %s", STORE_PATH, exc)
         return []
 
-
 def _save(events):
-    # Write to a temp file and rename over the original so a crash mid-write
-    # never leaves events.json half-written.
     tmp = STORE_PATH + ".tmp"
     with open(tmp, "w", encoding="utf-8") as f:
         json.dump(events, f, indent=2)
     os.replace(tmp, STORE_PATH)
 
-
 def _find(events, event_id):
     return next((e for e in events if e["id"] == event_id), None)
-
 
 def list_all():
     """Return a sorted snapshot for the calendar window."""
@@ -169,18 +161,14 @@ def list_all():
         items = _load()
     return sorted(items, key=_sort_key)
 
-
 class EventValidationError(ValueError):
     """The requested event data is incomplete or malformed."""
-
 
 class EventNotFoundError(LookupError):
     """No stored event has the requested id."""
 
-
 def _text(value):
     return value.strip() if isinstance(value, str) else ""
-
 
 def create_event(title, date, time=None):
     """Create an event and return a detached copy of it."""
@@ -205,7 +193,6 @@ def create_event(title, date, time=None):
 
     log.info("created event %s: %r on %s", event["id"], title, _when(event))
     return dict(event)
-
 
 def update_event(event_id, changes):
     """Apply the supplied title/date/time fields and return the updated event."""
@@ -243,7 +230,6 @@ def update_event(event_id, changes):
     log.info("updated event %s: %r on %s", event_id, result["title"], _when(result))
     return result
 
-
 def delete_event(event_id):
     """Delete an event and return the removed event."""
     event_id = _text(event_id)
@@ -257,10 +243,8 @@ def delete_event(event_id):
     log.info("deleted event %s: %r", event_id, event["title"])
     return dict(event)
 
-
 def _when(event) -> str:
     return event["date"] if not event.get("time") else f"{event['date']} at {event['time']}"
-
 
 def call(name: str, args: dict) -> str:
     """Run one calendar tool call. Returns plain text for the model to read."""
@@ -272,14 +256,12 @@ def call(name: str, args: dict) -> str:
     }.get(name)
     return handler(args) if handler else "Unknown calendar action."
 
-
 def _create(args: dict) -> str:
     try:
         event = create_event(args.get("title"), args.get("date"), args.get("time"))
     except EventValidationError as exc:
         return str(exc)
     return f"Created (id {event['id']}): {event['title']!r} on {_when(event)}."
-
 
 def _list(args: dict) -> str:
     from_date = (args.get("from_date") or "").strip()
@@ -304,7 +286,6 @@ def _list(args: dict) -> str:
         f"id {e['id']}: {e['title']} on {_when(e)}" for e in events
     )
 
-
 def _update(args: dict) -> str:
     event_id = (args.get("event_id") or "").strip()
     if not event_id:
@@ -327,7 +308,6 @@ def _update(args: dict) -> str:
         return f"No event with id {event_id!r}. Call list_events to find the right id."
 
     return f"Updated: {event['title']!r} now on {_when(event)}."
-
 
 def _delete(args: dict) -> str:
     event_id = (args.get("event_id") or "").strip()

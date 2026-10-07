@@ -1,8 +1,3 @@
-/* ---------------------------------------------------------------------------
-   Local calendar manager. Events can be created, edited, or deleted here and
-   remain available to the same voice-calendar tools used by Ask.
---------------------------------------------------------------------------- */
-
 window.CalendarApp = (() => {
   'use strict';
 
@@ -44,7 +39,7 @@ window.CalendarApp = (() => {
   async function requestJSON(url, options = {}) {
     const response = await fetch(url, options);
     let data = {};
-    try { data = await response.json(); } catch (_) { /* handled below */ }
+    try { data = await response.json(); } catch (_) {  }
     if (!response.ok) {
       throw new Error(data.message || 'The calendar could not save that change.');
     }
@@ -119,7 +114,6 @@ window.CalendarApp = (() => {
         copy.append(
           el('span', 'calendar__event-title', event.title),
           el('span', 'calendar__event-when', `${dayLabel(event.date, today)} · ${formatTime(event.time)}` +
-            // A reminder a caretaker added from their link says who.
             (event.by ? ` · from ${event.by}` : '')),
         );
 

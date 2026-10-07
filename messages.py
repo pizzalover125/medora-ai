@@ -24,9 +24,6 @@ CONTACT = "contact"
 SENDERS = (SENIOR, CONTACT)
 MAX_TEXT = 600
 
-# Each contact is a page at /<slug>. `calls` is what that person calls him, so
-# their page is headed the way their own phone would head it. Change a name
-# here and both ends follow - the row in his window and the page at /<slug>.
 CONTACTS = [
     {"slug": "son", "name": "Michael", "relation": "Son", "calls": "Dad"},
     {"slug": "daughter", "name": "Sarah", "relation": "Daughter", "calls": "Dad"},
@@ -39,8 +36,6 @@ CONTACTS = [
 
 BY_SLUG = {contact["slug"]: contact for contact in CONTACTS}
 
-# An empty messaging app demonstrates nothing, so the first run writes a few
-# days of conversation. (sender, minutes ago, text, already read).
 SEED = {
     "son": (
         (CONTACT, 430, "Morning Dad! Did you sleep any better last night?", True),
@@ -72,27 +67,21 @@ SEED = {
     ),
 }
 
-
 class MessageValidationError(ValueError):
     """The requested message is empty, too long, or from nobody."""
-
 
 class ContactNotFoundError(LookupError):
     """No contact has the requested slug."""
 
-
 def _now():
     return datetime.datetime.now(datetime.timezone.utc)
-
 
 def _iso(when):
     return when.replace(microsecond=0).isoformat()
 
-
 def _message(sender, text, at, read, kind="text"):
     return {"id": uuid.uuid4().hex[:8], "from": sender, "text": text,
             "at": at, "read": read, "kind": kind}
-
 
 def _seeded():
     now = _now()
@@ -103,7 +92,6 @@ def _seeded():
         ]
         for slug, lines in SEED.items()
     }
-
 
 def _load():
     """Return {slug: [message, ...]} for every known contact."""
@@ -116,27 +104,20 @@ def _load():
         stored = _seeded()
         _save(stored)
     except (json.JSONDecodeError, OSError, ValueError) as exc:
-        # Don't overwrite a file we couldn't read - start empty for this run
-        # and leave whatever is there for a person to look at.
         log.error("could not read %s: %s", STORE_PATH, exc)
         stored = {}
 
     return {slug: list(stored.get(slug) or []) for slug in BY_SLUG}
 
-
 def _save(threads):
-    # Write to a temp file and rename over the original so a crash mid-write
-    # never leaves messages.json half-written.
     tmp = STORE_PATH + ".tmp"
     with open(tmp, "w", encoding="utf-8") as f:
         json.dump(threads, f, indent=2)
     os.replace(tmp, STORE_PATH)
 
-
 def find_contact(slug):
     """Return the contact with this slug, or None."""
     return BY_SLUG.get((slug or "").strip().lower())
-
 
 def _require(slug):
     contact = find_contact(slug)
@@ -144,12 +125,10 @@ def _require(slug):
         raise ContactNotFoundError("There is no contact by that name.")
     return contact
 
-
 def _unread_for(messages, viewer):
     """Messages the viewer has not seen - the ones the other end sent."""
     other = CONTACT if viewer == SENIOR else SENIOR
     return [m for m in messages if m.get("from") == other and not m.get("read")]
-
 
 def overview(viewer=SENIOR):
     """Every contact with its last message and unread count, newest first."""
@@ -165,11 +144,8 @@ def overview(viewer=SENIOR):
             "unread": len(_unread_for(messages, viewer)),
         })
 
-    # A contact who just wrote belongs at the top; one who never has, at the
-    # bottom rather than in the middle of an otherwise chronological list.
     cards.sort(key=lambda card: card["last"]["at"] if card["last"] else "", reverse=True)
     return cards
-
 
 def thread(slug, viewer=None):
     """Return one conversation. A viewer marks their side's unread as read."""
@@ -185,7 +161,6 @@ def thread(slug, viewer=None):
                 _save(threads)
                 log.info("%s read %d message(s) from %s", viewer, len(unread), slug)
     return [dict(message) for message in messages]
-
 
 def log_event(slug, sender, text, read=True):
     """Write a line nobody typed - so far, the record a video call leaves.
@@ -206,7 +181,6 @@ def log_event(slug, sender, text, read=True):
 
     log.info("%s thread: %s", contact["slug"], event["text"])
     return dict(event)
-
 
 def send(slug, sender, text):
     """Append a message to a conversation and return a copy of it."""

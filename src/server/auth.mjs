@@ -1,18 +1,3 @@
-/* Who is asking.
-
-   There are two kinds of visitor, and they never share a way in:
-
-   - The senior's own device, which has signed in once with SENIOR_PASSCODE
-     and carries a signed cookie from then on. Everything the assistant
-     knows - the schedule, the calendar, every conversation - is behind it.
-   - A caretaker, who holds a link with an unguessable token in it. The
-     token opens exactly one conversation and the calls on it, and nothing
-     else. The senior can replace a token at any time, which closes the old
-     link.
-
-   With no SENIOR_PASSCODE set the senior side is open, which is only meant
-   for running it locally. */
-
 import crypto from 'node:crypto';
 import { HttpError } from './store.mjs';
 

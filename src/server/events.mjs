@@ -1,7 +1,3 @@
-/* Calendar events - one list in the store, offered to the model as tools it
-   may call whenever the question is about creating, changing, or looking up
-   something on the calendar. */
-
 import crypto from 'node:crypto';
 import { HttpError, read, update } from './store.mjs';
 
@@ -120,7 +116,6 @@ export async function createEvent(title, date, time, by = null) {
   if (time && !TIME_RE.test(time)) throw invalid('Please choose a valid time.');
 
   const event = { id: crypto.randomBytes(4).toString('hex'), title, date, time };
-  // Who added it, when it was not the senior - shown on the calendar.
   if (by) event.by = String(by).slice(0, 40);
   await update(KEY, [], (items) => { items.push(event); });
   return { ...event };
@@ -159,7 +154,6 @@ export async function deleteEvent(eventId) {
 
 const when = (e) => (e.time ? `${e.date} at ${e.time}` : e.date);
 
-/* One calendar tool call, answered as plain text for the model. */
 export async function call(name, args) {
   try {
     if (name === 'create_event') {

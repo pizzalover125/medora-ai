@@ -1,5 +1,3 @@
-/* The dock only routes to apps. Each app continues to own its own window. */
-
 (() => {
   'use strict';
 

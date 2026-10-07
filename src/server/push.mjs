@@ -1,22 +1,7 @@
-/* Web Push - what makes "call me any time" true.
-
-   Polling only works while a page is open and in front. A push reaches the
-   browser itself, so a caretaker's call rings the senior's device with the
-   assistant's tab in the background or closed, and the senior's reply buzzes
-   the caretaker's phone in their pocket. The service worker (public/sw.js)
-   decides what to do with it: hand it to an open page, or show a
-   notification that opens one.
-
-   Each device registers once. Subscriptions are kept per side - the senior's
-   devices, and each contact's devices under their slug - and a subscription
-   the push service says is gone is forgotten on the spot. */
-
 import crypto from 'node:crypto';
 import webpush from 'web-push';
 import { keys, read, remove, write } from './store.mjs';
 
-/* One key per device - push/<side>/<hash of endpoint> - so two devices
-   registering at once can never knock each other out. */
 const prefix = (slug) => `push/${slug ? `c-${slug}` : 'senior'}/`;
 const keyFor = (slug, endpoint) =>
   prefix(slug) + crypto.createHash('sha256').update(endpoint).digest('hex').slice(0, 32);
@@ -54,9 +39,6 @@ export async function forgetContact(slug) {
   await Promise.all((await keys(prefix(slug))).map((key) => remove(key)));
 }
 
-/* Send one payload to every device on one side. `to` is 'senior' or a
-   contact's slug. Never throws: a notification is a courtesy, and the
-   message or call it is about has already been saved. */
 export async function notify(to, payload, { urgent = false, ttl = 3600 } = {}) {
   if (!ready()) return;
   const slug = to === 'senior' ? null : to;

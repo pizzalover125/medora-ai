@@ -28,13 +28,11 @@ log = logging.getLogger(__name__)
 
 STORE_PATH = os.path.join(os.path.dirname(__file__), "news.json")
 TIMEOUT = 12
-TTL = 10 * 60             # headlines do not turn over faster than this
+TTL = 10 * 60
 MAX_PER_FEED = 8
-HEADLINE_COUNT = 3        # how many are read aloud at once
+HEADLINE_COUNT = 3
 SUMMARY_CHARS = 320
 
-# How long "tell me more" still refers to what was just read. After this the
-# thread of the conversation has been lost and it belongs to the model again.
 READING_TTL = 15 * 60
 
 CATEGORIES = [
@@ -79,25 +77,18 @@ BY_KEY = {category["key"]: category for category in CATEGORIES}
 DEFAULT_CATEGORIES = ("world", "nation", "health")
 
 _lock = threading.Lock()
-_feeds = {}               # url -> (fetched_at, [story, ...])
+_feeds = {}
 _reading = {"stories": [], "at": 0, "at_time": 0.0, "category": None}
-
 
 class NewsError(RuntimeError):
     """The headlines could not be fetched."""
 
-
-# ── the feeds ───────────────────────────────────────────────────────────
-
-
 _TAGS = re.compile(r"<[^>]+>")
 _SPACE = re.compile(r"\s+")
-
 
 def _clean(text):
     """RSS descriptions arrive with markup and entities in them."""
     return _SPACE.sub(" ", html.unescape(_TAGS.sub(" ", text or ""))).strip()
-
 
 def _summarise(text):
     text = _clean(text)
@@ -107,7 +98,6 @@ def _summarise(text):
     cut = text[:SUMMARY_CHARS]
     stop = max(cut.rfind(". "), cut.rfind("! "), cut.rfind("? "))
     return (cut[:stop + 1] if stop > 120 else cut.rsplit(" ", 1)[0] + "…").strip()
-
 
 def _published(item):
     stamp = item.findtext("pubDate") or item.findtext("{http://purl.org/dc/elements/1.1/}date")
@@ -125,14 +115,12 @@ def _published(item):
         when = when.replace(tzinfo=datetime.timezone.utc)
     return when
 
-
 def _source_of(url):
     if "npr.org" in url:
         return "NPR"
     if "bbc" in url:
         return "BBC"
     return "News"
-
 
 def _parse(body, url, category):
     root = ET.fromstring(body)
@@ -157,7 +145,6 @@ def _parse(body, url, category):
 
     return stories
 
-
 def _feed(url, category, force=False):
     """One feed, cached. A stale copy beats an empty app."""
     with _lock:
@@ -180,10 +167,8 @@ def _feed(url, category, force=False):
         _feeds[url] = (time.time(), stories)
     return stories
 
-
 def _normal(title):
     return re.sub(r"[^a-z0-9]+", " ", title.lower()).strip()
-
 
 def _interleave(groups):
     """Round robin, so three chosen categories are three voices rather than
@@ -194,7 +179,6 @@ def _interleave(groups):
             if row < len(group):
                 mixed.append(group[row])
     return mixed
-
 
 def stories(categories=None, force=False, limit=24):
     """The latest stories across the chosen categories, newest first within
@@ -229,7 +213,6 @@ def stories(categories=None, force=False, limit=24):
 
     return mixed[:limit]
 
-
 def _ago(when):
     if not when:
         return ""
@@ -247,17 +230,12 @@ def _ago(when):
         return "yesterday"
     return f"{int(seconds // 86400)} days ago"
 
-
 def _shape(story):
     shaped = dict(story)
     when = shaped.pop("published")
     shaped["ago"] = _ago(when)
     shaped["published"] = when.isoformat() if when else None
     return shaped
-
-
-# ── what the senior is following ────────────────────────────────────────
-
 
 def _load():
     try:
@@ -270,13 +248,11 @@ def _load():
         return {}
     return stored if isinstance(stored, dict) else {}
 
-
 def _save(store):
     tmp = STORE_PATH + ".tmp"
     with open(tmp, "w", encoding="utf-8") as f:
         json.dump(store, f, indent=2)
     os.replace(tmp, STORE_PATH)
-
 
 def selected():
     """The categories being followed, in the order they are shown."""
@@ -287,10 +263,8 @@ def selected():
     keys = [key for key in stored if key in BY_KEY]
     return keys or list(DEFAULT_CATEGORIES)
 
-
 class NewsValidationError(ValueError):
     """The requested categories are not ones we carry."""
-
 
 def save_categories(keys):
     """Replace the followed categories and return the new list."""
@@ -311,17 +285,12 @@ def save_categories(keys):
     log.info("news categories: %s", ", ".join(chosen))
     return chosen
 
-
 def catalogue():
     """Every category, with whether it is being followed."""
     following = set(selected())
     return [{"key": category["key"], "label": category["label"],
              "spoken": category["spoken"], "following": category["key"] in following}
             for category in CATEGORIES]
-
-
-# ── where we are in the reading ─────────────────────────────────────────
-
 
 def begin_reading(found, category=None):
     with _lock:
@@ -330,7 +299,6 @@ def begin_reading(found, category=None):
         _reading["at_time"] = time.time()
         _reading["category"] = category
 
-
 def forget_reading():
     with _lock:
         _reading["stories"] = []
@@ -338,19 +306,16 @@ def forget_reading():
         _reading["at_time"] = 0.0
         _reading["category"] = None
 
-
 def reading_active():
     """True while "tell me more" still has something to refer to."""
     with _lock:
         return bool(_reading["stories"]) and (time.time() - _reading["at_time"]) < READING_TTL
-
 
 def current_story():
     with _lock:
         if not _reading["stories"]:
             return None
         return _reading["stories"][min(_reading["at"], len(_reading["stories"]) - 1)]
-
 
 def advance():
     """Step to the next story, or None when the list runs out."""
@@ -363,28 +328,20 @@ def advance():
         _reading["at_time"] = time.time()
         return _reading["stories"][_reading["at"]]
 
-
 def last_read():
     with _lock:
         return list(_reading["stories"]), _reading["category"]
 
-
-# ── saying it out loud ──────────────────────────────────────────────────
-
-
 _ORDINALS = ("First", "Second", "Third", "Fourth", "Fifth")
-
 
 def _spoken_title(story):
     """A headline as it should be heard: no trailing stop, no stray dashes."""
     title = story["title"].strip().rstrip(".")
     return re.sub(r"\s*[-–—]\s*$", "", title)
 
-
 def _stop(text):
     """End a sentence, unless the headline already asked a question."""
     return text if text.endswith((".", "?", "!")) else text + "."
-
 
 def headlines_line(found, category=None):
     """The three headlines, read out."""
@@ -403,7 +360,6 @@ def headlines_line(found, category=None):
     parts.append("Say tell me more for the first one, or next story to move on.")
     return " ".join(parts)
 
-
 def story_line(story, lead=""):
     """One story with as much of it as we have."""
     if not story:
@@ -416,7 +372,6 @@ def story_line(story, lead=""):
     parts.append(f"That's from {story['source']}{when}.")
     return " ".join(parts)
 
-
 def following_line():
     names = [BY_KEY[key]["spoken"] for key in selected()]
     if len(names) == 1:
@@ -425,7 +380,6 @@ def following_line():
         listed = ", ".join(names[:-1]) + f" and {names[-1]}"
     return (f"You're following {listed}. "
             "Say news settings to change what you get.")
-
 
 def exhausted_line():
     return ("That's the last of the stories I read out. "

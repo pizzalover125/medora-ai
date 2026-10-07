@@ -1,11 +1,3 @@
-/* ---------------------------------------------------------------------------
-   Messages - the app in the dock, and the plain page each contact writes
-   from. Both ends share the bubbles, the composer, and the palette; only the
-   frame around them differs.
---------------------------------------------------------------------------- */
-
-/* ── the dock's unread dot ─────────────────────────────────────────────── */
-
 .app-dock__badge {
   position: absolute;
   top: 4px;
@@ -27,8 +19,6 @@
 }
 
 .app-dock__item.is-active .app-dock__badge { box-shadow: 0 0 0 2px var(--card-ink); }
-
-/* ── the window ────────────────────────────────────────────────────────── */
 
 .win__body.messages {
   height: min(400px, calc(100vh - 72px));
@@ -60,8 +50,6 @@
   font-weight: 650;
   opacity: .52;
 }
-
-/* ── the contact list ──────────────────────────────────────────────────── */
 
 .msg-list {
   flex: 1 1 auto;
@@ -188,8 +176,6 @@
   opacity: .34;
 }
 
-/* ── one conversation ──────────────────────────────────────────────────── */
-
 .msg-thread__head {
   display: flex;
   align-items: center;
@@ -219,8 +205,6 @@
 .msg-back:hover,
 .msg-back:focus-visible { background: rgb(var(--line) / .06); outline: none; }
 
-/* ── the bubbles, shared by both ends ──────────────────────────────────── */
-
 .chat-log {
   flex: 1 1 auto;
   min-height: 0;
@@ -238,8 +222,6 @@
 .chat-row { display: flex; }
 .chat-row.is-me { justify-content: flex-end; }
 
-/* A conversation is read from the bottom, so a short one sits at the bottom
-   of the log rather than floating at the top of the empty space. */
 .chat-log > :first-child { margin-top: auto; }
 
 .bubble {
@@ -271,8 +253,6 @@
 }
 
 .chat-row.is-me .bubble__time { opacity: .58; }
-
-/* ── the composer, shared by both ends ─────────────────────────────────── */
 
 .msg-composer {
   flex: none;
@@ -325,8 +305,6 @@
 .msg-composer__input:disabled,
 .msg-composer__send:disabled { cursor: wait; opacity: .55; }
 
-/* ── states ────────────────────────────────────────────────────────────── */
-
 .msg-status {
   flex: none;
   padding-top: 8px;
@@ -350,8 +328,6 @@
   opacity: .44;
 }
 
-/* ── the contact's own page: /grandson, /son, /nephew ──────────────────── */
-
 .thread-page {
   height: 100dvh;
   display: flex;
@@ -367,13 +343,10 @@
   cursor: auto;
 }
 
-/* iOS has no dvh before 16, and lands a little short rather than broken. */
 @supports not (height: 100dvh) {
   .thread-page { height: 100vh; }
 }
 
-/* One readable column, however wide the window is. The call screen is not
-   part of the column - it covers the window. */
 .thread-page > *:not(.call-screen) {
   flex: none;
   width: min(660px, 100%);
@@ -417,8 +390,6 @@
   opacity: .42;
 }
 
-/* The log takes the room the header and composer leave, so the composer sits
-   at the bottom of the window the way a phone's does. */
 .thread-page .chat-log {
   flex: 1 1 auto;
   min-height: 0;
@@ -429,7 +400,6 @@
 .thread-page .bubble { max-width: 74%; padding: 10px 13px; font-size: 15.5px; }
 .thread-page .bubble__time { font-size: 10.5px; }
 
-/* Under 16px, Safari zooms the page the moment the field is tapped. */
 .thread-page .msg-composer__input { padding: 13px 14px; font-size: 16px; }
 .thread-page .msg-composer__send { min-height: 46px; padding: 0 20px; font-size: 14px; }
 

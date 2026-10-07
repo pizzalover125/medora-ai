@@ -1,7 +1,3 @@
-/* Spoken commands the assistant handles itself, without asking the model.
-   A line-for-line port of intents.py - the same phrases, the same narrow
-   matching, so the same questions still fall through to the model. */
-
 const bareOf = (text) => (text || '').replace(/[^\w\s']/g, ' ').replace(/\s+/g, ' ').trim();
 const escape = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
@@ -77,8 +73,6 @@ export function matchMedora(text) {
   if (MEDORA_DUE.test(bare)) return 'next';
   return null;
 }
-
-/* ── news ────────────────────────────────────────────────────────────── */
 
 const NEWS = String.raw`(?:news|headlines?|stories|story)`;
 

@@ -17,11 +17,8 @@ log = logging.getLogger(__name__)
 GEO_URL = "https://ipinfo.io/json"
 FORECAST_URL = "https://api.open-meteo.com/v1/forecast"
 TIMEOUT = 12
-TTL = 15 * 60          # the sky does not change fast enough to refetch sooner
+TTL = 15 * 60
 
-# WMO code -> (shown, spoken, icon). The two texts differ where the official
-# wording reads badly out loud: "Overcast" is fine on screen, "cloudy" is what
-# a person says.
 CODES = {
     0:  ("Clear", "clear", "sun"),
     1:  ("Mostly clear", "mostly clear", "sun-cloud"),
@@ -58,10 +55,8 @@ _cache = None
 _cache_at = 0.0
 _lock = threading.Lock()
 
-
 class WeatherError(RuntimeError):
     """The forecast could not be fetched."""
-
 
 def _where():
     """Approximate location from the public IP. Good enough for a forecast."""
@@ -78,7 +73,6 @@ def _where():
         "region": data.get("region") or "",
         "tz": data.get("timezone") or "auto",
     }
-
 
 def _fetch():
     here = _where()
@@ -98,10 +92,8 @@ def _fetch():
     resp.raise_for_status()
     return here, resp.json()
 
-
 def _round(value, fallback=0):
     return fallback if value is None else int(round(value))
-
 
 def _shape(here, raw):
     daily = raw["daily"]
@@ -143,7 +135,6 @@ def _shape(here, raw):
                                                     days[0]["high"])),
     }
 
-
 def _today_line(place, today, now_temp):
     """What gets read aloud: today, and only today."""
     parts = [
@@ -152,7 +143,6 @@ def _today_line(place, today, now_temp):
         f"Right now it's {now_temp} degrees."
     ]
 
-    # Below about one chance in five, mentioning rain only worries people.
     if today["rain"] >= 20:
         rain = f"There's a {today['rain']} percent chance of rain"
         if today["precip"] >= 0.1:
@@ -164,7 +154,6 @@ def _today_line(place, today, now_temp):
 
     parts.append("The week ahead is on your screen.")
     return " ".join(parts)
-
 
 def forecast(force=False):
     """The shaped forecast, cached for a quarter of an hour."""
@@ -182,8 +171,6 @@ def forecast(force=False):
         except WeatherError:
             raise
         except Exception as exc:
-            # A stale forecast beats no forecast; the sky rarely turns over in
-            # the time it takes an outage to pass.
             if _cache:
                 log.warning("weather refresh failed (%s); serving cached", exc)
                 return _cache

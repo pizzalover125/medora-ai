@@ -1,11 +1,3 @@
-/* ---------------------------------------------------------------------------
-   One button. Press to speak, press again to stop, listen to the answer.
-
-   States: idle -> listening -> thinking -> speaking -> idle
-   A press in any state is always meaningful: it starts, it stops, or it
-   interrupts. The button is never dead.
---------------------------------------------------------------------------- */
-
 (() => {
   'use strict';
 
@@ -13,8 +5,8 @@
   const body = document.body;
   const root = document.documentElement;
 
-  const MIN_CLIP_MS = 350;   // below this it was a stray double-tap, not speech
-  const MAX_CLIP_MS = 60000; // safety net if a press-to-stop never comes
+  const MIN_CLIP_MS = 350;
+  const MAX_CLIP_MS = 60000;
   const REMINDER_INTERVAL_MS = 60000;
   const REMINDER_LOOKBACK_MS = 5 * 60000;
   const REMINDER_HISTORY_MS = 7 * 24 * 60 * 60000;
@@ -26,22 +18,20 @@
   let chunks     = [];
   let startedAt  = 0;
   let stopTimer  = null;
-  let inflight   = null;     // AbortController for the in-flight request
+  let inflight   = null;
 
   let audioCtx   = null;
   let analyser   = null;
   let timeData   = null;
 
-  let amp        = 0;        // smoothed 0..1, drives every reactive transform
-  let sessionPeak = 0;       // loudest the mic got during this recording
-  let speechAmp  = 0;        // synthetic envelope while the answer is spoken
+  let amp        = 0;
+  let sessionPeak = 0;
+  let speechAmp  = 0;
   let primed     = false;
   let reminderTimer = null;
   let reminderCheckInFlight = false;
   let pendingReminders = [];
   const deliveredReminders = loadDeliveredReminders();
-
-  /* ── state ────────────────────────────────────────────────────────────── */
 
   function setState(next) {
     state = next;
@@ -53,11 +43,7 @@
     }
   }
 
-  /* ── captions ─────────────────────────────────────────────────────────── */
-  /* What was heard and what is being said, along the bottom of the screen.
-     The answer is captioned a sentence at a time, as it is spoken. */
-
-  const CAPTION_HOLD_MS = 8000;   // time to finish reading once the voice stops
+  const CAPTION_HOLD_MS = 8000;
 
   const captions = document.getElementById('captions');
   const heardLine = captions.querySelector('.captions__line--you');
@@ -81,13 +67,6 @@
     clearTimeout(captionTimer);
     captionTimer = setTimeout(hideCaptions, CAPTION_HOLD_MS);
   }
-
-  /* ── live captions ────────────────────────────────────────────────────── */
-  /* The browser's own recogniser writes the words up while they are still
-     being said. It is only a preview: the recording still goes to the server,
-     and what the server heard replaces it. Phones and tablets are left out -
-     there the recogniser and the recorder can fight over the one microphone,
-     and a silent recording is far worse than a slower caption. */
 
   const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   const mobile = /iP(hone|ad|od)|Android/.test(navigator.userAgent) ||
@@ -120,12 +99,9 @@
   function stopLiveCaptions() {
     const r = recognition;
     recognition = null;
-    if (r) { try { r.abort(); } catch (_) { /* already stopped */ } }
+    if (r) { try { r.abort(); } catch (_) {  } }
   }
 
-  /* /api/ask streams two lines: what was heard, as soon as it is known, then
-     the reply. Anything that fails before the words are known is one plain
-     JSON body instead. */
   async function readAsk(res, onHeard) {
     if (!(res.headers.get('content-type') || '').includes('ndjson') || !res.body) {
       const data = await res.json();
@@ -154,10 +130,6 @@
     return {data: last, ok: status < 400, status};
   }
 
-  /* ── the animation loop ───────────────────────────────────────────────── */
-  /* One rAF loop owns --amp for the whole page. Attack is fast so the orb
-     answers your voice immediately; release is slow so it never flickers. */
-
   function frame() {
     let target = 0;
 
@@ -169,8 +141,6 @@
         sum += v * v;
       }
       const rms = Math.sqrt(sum / timeData.length);
-      // Expand the quiet end of the range: a soft, older voice should still
-      // visibly move the orb.
       target = Math.min(1, Math.pow(rms * 5.2, 0.72));
       if (rms > sessionPeak) sessionPeak = rms;
     } else if (state === 'speaking') {
@@ -186,8 +156,6 @@
     requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);
-
-  /* ── microphone ───────────────────────────────────────────────────────── */
 
   async function getStream() {
     if (stream) return stream;
@@ -217,8 +185,6 @@
     ];
     return candidates.find((t) => MediaRecorder.isTypeSupported(t)) || '';
   }
-
-  /* ── record ───────────────────────────────────────────────────────────── */
 
   async function startListening() {
     try {
@@ -263,7 +229,6 @@
     recorder = null;
     chunks = [];
 
-    // A stray double-tap isn't a question. Go quiet rather than scold.
     if (duration < MIN_CLIP_MS || blob.size < 1024) {
       setState('idle');
       hideCaptions();
@@ -271,7 +236,6 @@
     }
 
     setState('thinking');
-    // Keep the live words up while the server listens to the recording.
     if (liveText) captionLine(heardLine, liveText, true);
     else captionLine(heardLine, '…', true);
     console.log('[ask] recorded %dms, %d bytes, type=%s, chunks=%d, micPeak=%s',
@@ -284,9 +248,6 @@
 
     const form = new FormData();
     inflight = new AbortController();
-    // The model on the other end is given 16 kHz mono WAV - small, and a
-    // format every audio model reads. If this browser cannot decode its own
-    // recording, the original goes instead and the server names its format.
     const wav = await toWav(blob);
     if (wav) {
       form.append('audio', wav.blob, 'clip.wav');
@@ -313,20 +274,14 @@
         window.Games.open(data.game);
       }
 
-      // The window shows the whole week; data.speak is today's line only.
       if (data.action === 'weather' && window.Weather) {
         window.Weather.open(data.weather);
       }
 
-      // The spoken line is the schedule; the window is the whole of it, and
-      // it opens on the doses so the two say the same thing. (The dock icon
-      // opens it wherever it was left instead.)
       if (data.action === 'medora' && window.Medora) {
         window.Medora.open('doses');
       }
 
-      // The headlines are spoken; the window holds the rest of them, and
-      // lands on whatever was just read - a section, or one story.
       if (data.action === 'news' && window.News) {
         window.News.open({category: data.category || null, story: data.story || null});
       }
@@ -335,8 +290,6 @@
         window.News.open({view: 'settings'});
       }
 
-      // "Test Medora" runs the dispenser's hardware, which only this end can
-      // reach. With no link there is nothing to test, so say so instead.
       if (data.action === 'medora-test' && window.Medora) {
         if (!window.Medora.isConnected) {
           window.Medora.open('device');
@@ -354,14 +307,12 @@
       }
     } catch (err) {
       inflight = null;
-      if (err.name === 'AbortError') return;   // the user cancelled; stay quiet
+      if (err.name === 'AbortError') return;
       console.error('request failed', err);
       captionLine(heardLine, '');
       fail("I can't reach my connection right now. Please try again.");
     }
   }
-
-  /* ── 16 kHz WAV ───────────────────────────────────────────────────────── */
 
   async function toWav(blob) {
     try {
@@ -398,15 +349,11 @@
     }
   }
 
-  /* ── speak ────────────────────────────────────────────────────────────── */
-
   let voice = null;
 
   function pickVoice() {
     const voices = speechSynthesis.getVoices().filter((v) => /^en/i.test(v.lang));
     if (!voices.length) return null;
-    // Prefer the platform's high-quality voices; they are far kinder on the
-    // ear than the default robotic fallbacks.
     const preferred = [
       /premium|enhanced|neural|natural/i,
       /samantha|ava|allison|serena|karen|daniel|siri/i,
@@ -424,8 +371,6 @@
     speechSynthesis.onvoiceschanged = () => { voice = pickVoice(); };
   }
 
-  /* Chrome silently stops utterances longer than ~15s, so the answer is split
-     into sentences and queued. It also gives the orb a pulse per word. */
   function sentences(text) {
     const parts = text.match(/[^.!?]+[.!?]*\s*/g) || [text];
     const out = [];
@@ -457,11 +402,10 @@
       const u = new SpeechSynthesisUtterance(part);
       if (voice) u.voice = voice;
       u.lang   = (voice && voice.lang) || 'en-US';
-      u.rate   = 0.94;   // unhurried, for an older listener
+      u.rate   = 0.94;
       u.pitch  = 1.0;
       u.volume = 1.0;
 
-      // Each word kicks the envelope, so the orb pulses in time with speech.
       u.onboundary = () => { speechAmp = Math.min(1, speechAmp + 0.42); };
       u.onstart = () => { if (state === 'speaking') captionLine(saidLine, part); };
       u.onend = u.onerror = () => {
@@ -479,8 +423,6 @@
     speechAmp = 0;
   }
 
-  /* ── calendar reminders ─────────────────────────────────────────────── */
-
   function loadDeliveredReminders() {
     const reminders = new Map();
     try {
@@ -489,7 +431,7 @@
       Object.entries(stored).forEach(([key, announcedAt]) => {
         if (Number(announcedAt) >= cutoff) reminders.set(key, Number(announcedAt));
       });
-    } catch (_) { /* storage is optional; the in-memory map still de-duplicates */ }
+    } catch (_) {  }
     return reminders;
   }
 
@@ -499,7 +441,7 @@
         REMINDER_STORE_KEY,
         JSON.stringify(Object.fromEntries(deliveredReminders)),
       );
-    } catch (_) { /* private browsing can disable storage */ }
+    } catch (_) {  }
   }
 
   function reminderKey(event) {
@@ -518,7 +460,6 @@
     if (!pendingReminders.length || !['idle', 'blocked'].includes(state)) return;
     const ready = pendingReminders;
     pendingReminders = [];
-    // Lines from Messages are said as they are; due events get "Reminder."
     const lines = ready.filter((item) => item.say).map((item) => item.say);
     const due = ready.filter((item) => !item.say);
     if (due.length) lines.push(reminderMessage(due));
@@ -526,7 +467,6 @@
     speak(lines.join(' '));
   }
 
-  /* Timed calendar events that have just come due. */
   async function dueEvents() {
     const response = await fetch('/api/events', {cache: 'no-store'});
     if (!response.ok) throw new Error(`calendar returned ${response.status}`);
@@ -540,8 +480,6 @@
     });
   }
 
-  /* Doses Medora is waiting on. The server decides what counts as due - the
-     same few minutes the dispenser gives an alarm before it gives up. */
   async function dueDoses() {
     const response = await fetch('/api/medicines/due', {cache: 'no-store'});
     if (!response.ok) throw new Error(`medora returned ${response.status}`);
@@ -559,7 +497,6 @@
     reminderCheckInFlight = true;
 
     try {
-      // One of the two failing is no reason to miss the other.
       const results = await Promise.allSettled([dueEvents(), dueDoses()]);
       results.forEach((result) => {
         if (result.status === 'rejected') {
@@ -586,14 +523,10 @@
 
   function fail(message) {
     setState('error');
-    // Let the shake finish before speaking - but if the user has already
-    // pressed again in that window, their new question wins.
     setTimeout(() => {
       if (state === 'error') speak(message);
     }, 620);
   }
-
-  /* ── input ────────────────────────────────────────────────────────────── */
 
   function press() {
     switch (state) {
@@ -615,15 +548,13 @@
         hideCaptions();
         break;
       case 'blocked':
-        startListening();   // let them retry after granting permission
+        startListening();
         break;
     }
   }
 
   orb.addEventListener('pointerdown', () => {
     root.style.setProperty('--press', '1');
-    // Safari only allows speech that descends from a user gesture, so burn a
-    // silent utterance on the very first touch.
     if (!primed && 'speechSynthesis' in window) {
       primed = true;
       const u = new SpeechSynthesisUtterance(' ');
@@ -639,15 +570,10 @@
 
   orb.addEventListener('click', press);
 
-  // Keep a stray Space from scrolling the page, without cancelling the native
-  // Space-to-activate behaviour of the orb or the app-dock buttons.
   window.addEventListener('keydown', (e) => {
     if (e.code === 'Space' && e.target === document.body) e.preventDefault();
   });
 
-  // Check once at startup, once every minute, and once after returning to a
-  // backgrounded tab. Timed events are announced once; all-day events remain
-  // visual calendar entries because they have no specific moment to announce.
   checkReminders();
   reminderTimer = setInterval(checkReminders, REMINDER_INTERVAL_MS);
   document.addEventListener('visibilitychange', () => {
@@ -655,7 +581,6 @@
   });
   window.Reminders = {
     check: checkReminders,
-    // Said as soon as the assistant is not listening, thinking or speaking.
     say: (text) => {
       pendingReminders.push({say: text});
       flushReminders();

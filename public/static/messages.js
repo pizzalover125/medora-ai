@@ -1,32 +1,15 @@
-/* ---------------------------------------------------------------------------
-   Messages, in the same draggable window as the calendar.
-
-   window.Messages.open()   the list of contacts, then one conversation
-
-   The other end of every conversation is a caretaker's own link,
-   /c/<token>. The senior adds someone here and gets that link to send them
-   - by text, by email, or by letting them scan the code on screen - and
-   with it they can text and video call at any time. "Share link" on a
-   conversation shows it again; "New link" replaces it, which stops the old
-   one working.
-
-   A push (static/push.js) says when someone has written, so the app looks
-   at once; polling is the backstop. A new message is also read aloud, since
-   the person this is for may not be looking at the screen.
---------------------------------------------------------------------------- */
-
 window.Messages = (() => {
   'use strict';
 
-  const OPEN_POLL_MS = 4000;    // a conversation on screen should feel live
-  const IDLE_POLL_MS = 12000;   // closed, it only has to feed the dock dot
-  const PUSHED_POLL_MS = 60000; // notifications on: a push says when to look
+  const OPEN_POLL_MS = 4000;
+  const IDLE_POLL_MS = 12000;
+  const PUSHED_POLL_MS = 60000;
 
-  let body = null;    // the window body while it is open, else null
-  let view = null;    // {kind: 'list'} | {kind: 'thread', ...}
+  let body = null;
+  let view = null;
   let timer = null;
   let pushOn = false;
-  let announced = null;   // ids of messages already read aloud; null until the first look
+  let announced = null;
 
   const el = (tag, cls, text) => {
     const node = document.createElement(tag);
@@ -46,12 +29,10 @@ window.Messages = (() => {
   async function requestJSON(url, options = {}) {
     const response = await fetch(url, {cache: 'no-store', ...options});
     let data = {};
-    try { data = await response.json(); } catch (_) { /* handled below */ }
+    try { data = await response.json(); } catch (_) {  }
     if (!response.ok) throw new Error(data.message || 'Messages are not answering.');
     return data;
   }
-
-  /* ── the dock dot ─────────────────────────────────────────────────────── */
 
   function setBadge(count) {
     const item = document.querySelector('.app-dock__item[data-app="messages"]');
@@ -76,16 +57,12 @@ window.Messages = (() => {
   const totalUnread = (contacts) =>
     contacts.reduce((sum, contact) => sum + (contact.unread || 0), 0);
 
-  /* ── labels ───────────────────────────────────────────────────────────── */
-
   const clock = (date) => new Intl.DateTimeFormat(undefined, {
     hour: 'numeric', minute: '2-digit',
   }).format(date);
 
   const sameDay = (a, b) => a.toDateString() === b.toDateString();
 
-  /* `brief` is for the contact list, where only the column's width is spare;
-     the full form is for a bubble, where the time of day always matters. */
   function when(iso, brief = false) {
     const date = new Date(iso);
     if (Number.isNaN(date.getTime())) return '';
@@ -109,8 +86,6 @@ window.Messages = (() => {
     const letter = name.replace(/^dr\.?\s*/i, '').trim().charAt(0).toUpperCase();
     return el('span', cls ? `msg-avatar ${cls}` : 'msg-avatar', letter || '?');
   }
-
-  /* ── the contact list ─────────────────────────────────────────────────── */
 
   function listSignature(contacts) {
     return contacts.map((c) => [c.slug, c.unread, c.last && c.last.id].join(':')).join('|');
@@ -178,8 +153,6 @@ window.Messages = (() => {
       'they can text and call you at any time.'));
   }
 
-  /* ── one conversation ─────────────────────────────────────────────────── */
-
   function note(message) {
     const row = el('div', 'chat-note');
     row.append(document.createTextNode(message.text),
@@ -199,8 +172,6 @@ window.Messages = (() => {
     return row;
   }
 
-  /* Append only what is new: a full re-render on every poll would throw away
-     the scroll position, and the caret with it. */
   function appendMessages(messages) {
     if (!view || view.kind !== 'thread') return;
     const {log, seen} = view;
@@ -346,8 +317,6 @@ window.Messages = (() => {
       .catch(failed);
   }
 
-  /* ── polling ──────────────────────────────────────────────────────────── */
-
   function schedule() {
     clearTimeout(timer);
     const idle = pushOn ? PUSHED_POLL_MS : IDLE_POLL_MS;
@@ -367,7 +336,6 @@ window.Messages = (() => {
         }
         return;
       }
-      // Adding someone or showing a link: nothing on screen to refresh.
       if (view.kind !== 'thread') return;
 
       const data = await requestJSON(
@@ -377,18 +345,12 @@ window.Messages = (() => {
         view.log.querySelectorAll('.msg-empty').forEach((node) => node.remove());
       }
     } catch (error) {
-      // A poll that fails is not worth interrupting anyone over - the next
-      // one is four seconds away.
       console.warn('[messages] poll failed', error);
     } finally {
       schedule();
     }
   }
 
-  /* ── reading new messages aloud ───────────────────────────────────────── */
-
-  /* Someone who wrote is told about once, by name, unless their conversation
-     is already open on screen. The first look only learns what is there. */
   function announce(contacts) {
     const fresh = contacts.filter((c) => c.unread && c.last && c.last.from === 'contact' &&
                                          c.last.kind !== 'call');
@@ -407,8 +369,6 @@ window.Messages = (() => {
         : `New message from ${c.name}. ${c.last.text}`);
     });
   }
-
-  /* ── notifications on this device ─────────────────────────────────────── */
 
   async function alertsBanner(target) {
     if (!window.Push) return;
@@ -444,8 +404,6 @@ window.Messages = (() => {
     const head = target.querySelector('.msg-head');
     if (head) head.after(banner);
   }
-
-  /* ── adding someone, and their link ───────────────────────────────────── */
 
   function panelHead(eyebrow, title, onBack) {
     const head = el('div', 'msg-thread__head');
@@ -539,7 +497,6 @@ window.Messages = (() => {
     }
   }
 
-  /* Two presses for anything that cannot be undone. */
   function confirmButton(label, sure, action) {
     const button = el('button', 'msg-panel__danger', label);
     button.type = 'button';
@@ -563,8 +520,6 @@ window.Messages = (() => {
     return button;
   }
 
-  /* What this person may know. Both start off; each is one tap, saved at
-     once, and says plainly what it does. */
   function permissionsBlock(contact) {
     const block = el('div', 'msg-perms');
     block.appendChild(el('p', 'msg-field__label', `What ${contact.name} can see`));
@@ -662,7 +617,7 @@ window.Messages = (() => {
           title: 'Messages',
           text: `Hi ${contact.name} - use this link to message me or video call me any time:`,
           url: link,
-        }).catch(() => { /* they closed the sheet */ });
+        }).catch(() => {  });
       });
       actions.appendChild(share);
     }
@@ -710,10 +665,8 @@ window.Messages = (() => {
     if (document.visibilityState === 'visible') tick();
   });
 
-  // Calls ring here even with the window closed, so this starts with the page.
   VideoCall.init({me: 'senior', onchange: tick});
 
-  // A push while the page is open means someone wrote or rang: look now.
   if (window.Push) {
     Push.status().then((state) => {
       pushOn = state === 'on';

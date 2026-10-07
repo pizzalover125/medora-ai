@@ -1,11 +1,3 @@
-/* ---------------------------------------------------------------------------
-   News, in the same homeroom clothes as Medora: greyscale, 4px corners,
-   lowercase chrome. The palette and the buttons come from hr.css.
-
-   A headline is the one thing here allowed two lines; it is clamped at two,
-   so a long one never pushes the list around.
---------------------------------------------------------------------------- */
-
 .win:has(> .win__body.news) {
   width: min(94vw, 440px);
 }
@@ -19,8 +11,6 @@
   padding: 0;
   overflow: hidden;
 }
-
-/* ── head ──────────────────────────────────────────────────────────────── */
 
 .news__head {
   flex: none;
@@ -40,8 +30,6 @@
   letter-spacing: -0.03em;
   text-transform: lowercase;
 }
-
-/* ── the sections ──────────────────────────────────────────────────────── */
 
 .news__chips {
   flex: none;
@@ -79,8 +67,6 @@
 }
 
 .news__chip:focus-visible { outline: 2px solid var(--hr-fg); outline-offset: 1px; }
-
-/* ── body and foot ─────────────────────────────────────────────────────── */
 
 .news__body {
   flex: 1 1 auto;
@@ -138,8 +124,6 @@
   white-space: nowrap;
 }
 
-/* ── a headline ────────────────────────────────────────────────────────── */
-
 .news-story {
   display: grid;
   gap: 5px;
@@ -187,7 +171,6 @@
   letter-spacing: 0.02em;
 }
 
-/* Two lines, and never a third. */
 .news-story__title {
   display: -webkit-box;
   margin: 0;
@@ -199,8 +182,6 @@
   font-weight: 500;
   line-height: 1.35;
 }
-
-/* ── one story in full ─────────────────────────────────────────────────── */
 
 .news-full { display: grid; gap: 9px; }
 
@@ -243,8 +224,6 @@
 
 .news-full__link:hover { background: var(--hr-muted); }
 .news-full__link svg { width: 13px; height: 13px; }
-
-/* ── settings ──────────────────────────────────────────────────────────── */
 
 .news-pick {
   display: flex;
@@ -294,8 +273,6 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-
-/* ── motion ────────────────────────────────────────────────────────────── */
 
 @keyframes news-fade-up {
   from { opacity: 0; transform: translateY(8px); }

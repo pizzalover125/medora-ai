@@ -1,22 +1,11 @@
-/* ---------------------------------------------------------------------------
-   Messages, in the same draggable window as the calendar.
-
-   window.Messages.open()   the list of contacts, then one conversation
-
-   The other end of every conversation is a page of its own - /grandson,
-   /son, /nephew - so a second browser tab is all it takes to write back.
-   While this page is open the app polls; a dot on the dock icon says
-   someone has written and the window isn't open.
---------------------------------------------------------------------------- */
-
 window.Messages = (() => {
   'use strict';
 
-  const OPEN_POLL_MS = 4000;    // a conversation on screen should feel live
-  const IDLE_POLL_MS = 12000;   // closed, it only has to feed the dock dot
+  const OPEN_POLL_MS = 4000;
+  const IDLE_POLL_MS = 12000;
 
-  let body = null;    // the window body while it is open, else null
-  let view = null;    // {kind: 'list'} | {kind: 'thread', ...}
+  let body = null;
+  let view = null;
   let timer = null;
 
   const el = (tag, cls, text) => {
@@ -34,12 +23,10 @@ window.Messages = (() => {
   async function requestJSON(url, options = {}) {
     const response = await fetch(url, {cache: 'no-store', ...options});
     let data = {};
-    try { data = await response.json(); } catch (_) { /* handled below */ }
+    try { data = await response.json(); } catch (_) {  }
     if (!response.ok) throw new Error(data.message || 'Messages are not answering.');
     return data;
   }
-
-  /* ── the dock dot ─────────────────────────────────────────────────────── */
 
   function setBadge(count) {
     const item = document.querySelector('.app-dock__item[data-app="messages"]');
@@ -64,16 +51,12 @@ window.Messages = (() => {
   const totalUnread = (contacts) =>
     contacts.reduce((sum, contact) => sum + (contact.unread || 0), 0);
 
-  /* ── labels ───────────────────────────────────────────────────────────── */
-
   const clock = (date) => new Intl.DateTimeFormat(undefined, {
     hour: 'numeric', minute: '2-digit',
   }).format(date);
 
   const sameDay = (a, b) => a.toDateString() === b.toDateString();
 
-  /* `brief` is for the contact list, where only the column's width is spare;
-     the full form is for a bubble, where the time of day always matters. */
   function when(iso, brief = false) {
     const date = new Date(iso);
     if (Number.isNaN(date.getTime())) return '';
@@ -97,8 +80,6 @@ window.Messages = (() => {
     const letter = name.replace(/^dr\.?\s*/i, '').trim().charAt(0).toUpperCase();
     return el('span', cls ? `msg-avatar ${cls}` : 'msg-avatar', letter || '?');
   }
-
-  /* ── the contact list ─────────────────────────────────────────────────── */
 
   function listSignature(contacts) {
     return contacts.map((c) => [c.slug, c.unread, c.last && c.last.id].join(':')).join('|');
@@ -156,8 +137,6 @@ window.Messages = (() => {
       'Tap a name to read and reply. They write back from their own page.'));
   }
 
-  /* ── one conversation ─────────────────────────────────────────────────── */
-
   function note(message) {
     const row = el('div', 'chat-note');
     row.append(document.createTextNode(message.text),
@@ -177,8 +156,6 @@ window.Messages = (() => {
     return row;
   }
 
-  /* Append only what is new: a full re-render on every poll would throw away
-     the scroll position, and the caret with it. */
   function appendMessages(messages) {
     if (!view || view.kind !== 'thread') return;
     const {log, seen} = view;
@@ -317,8 +294,6 @@ window.Messages = (() => {
       .catch(failed);
   }
 
-  /* ── polling ──────────────────────────────────────────────────────────── */
-
   function schedule() {
     clearTimeout(timer);
     timer = setTimeout(tick, isOpen() ? OPEN_POLL_MS : IDLE_POLL_MS);
@@ -344,8 +319,6 @@ window.Messages = (() => {
         view.log.querySelectorAll('.msg-empty').forEach((node) => node.remove());
       }
     } catch (error) {
-      // A poll that fails is not worth interrupting anyone over - the next
-      // one is four seconds away.
       console.warn('[messages] poll failed', error);
     } finally {
       schedule();
@@ -374,7 +347,6 @@ window.Messages = (() => {
     if (document.visibilityState === 'visible') tick();
   });
 
-  // Calls ring here even with the window closed, so this starts with the page.
   VideoCall.init({me: 'senior', onchange: tick});
 
   return {open, close: () => Win.close()};

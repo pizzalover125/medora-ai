@@ -1,11 +1,3 @@
-/* ---------------------------------------------------------------------------
-   One button. Press to speak, press again to stop, listen to the answer.
-
-   States: idle -> listening -> thinking -> speaking -> idle
-   A press in any state is always meaningful: it starts, it stops, or it
-   interrupts. The button is never dead.
---------------------------------------------------------------------------- */
-
 (() => {
   'use strict';
 
@@ -13,8 +5,8 @@
   const body = document.body;
   const root = document.documentElement;
 
-  const MIN_CLIP_MS = 350;   // below this it was a stray double-tap, not speech
-  const MAX_CLIP_MS = 60000; // safety net if a press-to-stop never comes
+  const MIN_CLIP_MS = 350;
+  const MAX_CLIP_MS = 60000;
   const REMINDER_INTERVAL_MS = 60000;
   const REMINDER_LOOKBACK_MS = 5 * 60000;
   const REMINDER_HISTORY_MS = 7 * 24 * 60 * 60000;
@@ -26,22 +18,20 @@
   let chunks     = [];
   let startedAt  = 0;
   let stopTimer  = null;
-  let inflight   = null;     // AbortController for the in-flight request
+  let inflight   = null;
 
   let audioCtx   = null;
   let analyser   = null;
   let timeData   = null;
 
-  let amp        = 0;        // smoothed 0..1, drives every reactive transform
-  let sessionPeak = 0;       // loudest the mic got during this recording
-  let speechAmp  = 0;        // synthetic envelope while the answer is spoken
+  let amp        = 0;
+  let sessionPeak = 0;
+  let speechAmp  = 0;
   let primed     = false;
   let reminderTimer = null;
   let reminderCheckInFlight = false;
   let pendingReminders = [];
   const deliveredReminders = loadDeliveredReminders();
-
-  /* ── state ────────────────────────────────────────────────────────────── */
 
   function setState(next) {
     state = next;
@@ -50,10 +40,6 @@
       queueMicrotask(flushReminders);
     }
   }
-
-  /* ── the animation loop ───────────────────────────────────────────────── */
-  /* One rAF loop owns --amp for the whole page. Attack is fast so the orb
-     answers your voice immediately; release is slow so it never flickers. */
 
   function frame() {
     let target = 0;
@@ -66,8 +52,6 @@
         sum += v * v;
       }
       const rms = Math.sqrt(sum / timeData.length);
-      // Expand the quiet end of the range: a soft, older voice should still
-      // visibly move the orb.
       target = Math.min(1, Math.pow(rms * 5.2, 0.72));
       if (rms > sessionPeak) sessionPeak = rms;
     } else if (state === 'speaking') {
@@ -83,8 +67,6 @@
     requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);
-
-  /* ── microphone ───────────────────────────────────────────────────────── */
 
   async function getStream() {
     if (stream) return stream;
@@ -114,8 +96,6 @@
     ];
     return candidates.find((t) => MediaRecorder.isTypeSupported(t)) || '';
   }
-
-  /* ── record ───────────────────────────────────────────────────────────── */
 
   async function startListening() {
     try {
@@ -155,7 +135,6 @@
     recorder = null;
     chunks = [];
 
-    // A stray double-tap isn't a question. Go quiet rather than scold.
     if (duration < MIN_CLIP_MS || blob.size < 1024) {
       setState('idle');
       return;
@@ -188,20 +167,14 @@
         window.Games.open(data.game);
       }
 
-      // The window shows the whole week; data.speak is today's line only.
       if (data.action === 'weather' && window.Weather) {
         window.Weather.open(data.weather);
       }
 
-      // The spoken line is the schedule; the window is the whole of it, and
-      // it opens on the doses so the two say the same thing. (The dock icon
-      // opens it wherever it was left instead.)
       if (data.action === 'medora' && window.Medora) {
         window.Medora.open('doses');
       }
 
-      // The headlines are spoken; the window holds the rest of them, and
-      // lands on whatever was just read - a section, or one story.
       if (data.action === 'news' && window.News) {
         window.News.open({category: data.category || null, story: data.story || null});
       }
@@ -210,8 +183,6 @@
         window.News.open({view: 'settings'});
       }
 
-      // "Test Medora" runs the dispenser's hardware, which only this end can
-      // reach. With no link there is nothing to test, so say so instead.
       if (data.action === 'medora-test' && window.Medora) {
         if (!window.Medora.isConnected) {
           window.Medora.open('device');
@@ -229,21 +200,17 @@
       }
     } catch (err) {
       inflight = null;
-      if (err.name === 'AbortError') return;   // the user cancelled; stay quiet
+      if (err.name === 'AbortError') return;
       console.error('request failed', err);
       fail("I can't reach my connection right now. Please try again.");
     }
   }
-
-  /* ── speak ────────────────────────────────────────────────────────────── */
 
   let voice = null;
 
   function pickVoice() {
     const voices = speechSynthesis.getVoices().filter((v) => /^en/i.test(v.lang));
     if (!voices.length) return null;
-    // Prefer the platform's high-quality voices; they are far kinder on the
-    // ear than the default robotic fallbacks.
     const preferred = [
       /premium|enhanced|neural|natural/i,
       /samantha|ava|allison|serena|karen|daniel|siri/i,
@@ -261,8 +228,6 @@
     speechSynthesis.onvoiceschanged = () => { voice = pickVoice(); };
   }
 
-  /* Chrome silently stops utterances longer than ~15s, so the answer is split
-     into sentences and queued. It also gives the orb a pulse per word. */
   function sentences(text) {
     const parts = text.match(/[^.!?]+[.!?]*\s*/g) || [text];
     const out = [];
@@ -289,11 +254,10 @@
       const u = new SpeechSynthesisUtterance(part);
       if (voice) u.voice = voice;
       u.lang   = (voice && voice.lang) || 'en-US';
-      u.rate   = 0.94;   // unhurried, for an older listener
+      u.rate   = 0.94;
       u.pitch  = 1.0;
       u.volume = 1.0;
 
-      // Each word kicks the envelope, so the orb pulses in time with speech.
       u.onboundary = () => { speechAmp = Math.min(1, speechAmp + 0.42); };
       u.onend = u.onerror = () => {
         if (++done >= queue.length && state === 'speaking') {
@@ -310,8 +274,6 @@
     speechAmp = 0;
   }
 
-  /* ── calendar reminders ─────────────────────────────────────────────── */
-
   function loadDeliveredReminders() {
     const reminders = new Map();
     try {
@@ -320,7 +282,7 @@
       Object.entries(stored).forEach(([key, announcedAt]) => {
         if (Number(announcedAt) >= cutoff) reminders.set(key, Number(announcedAt));
       });
-    } catch (_) { /* storage is optional; the in-memory map still de-duplicates */ }
+    } catch (_) {  }
     return reminders;
   }
 
@@ -330,7 +292,7 @@
         REMINDER_STORE_KEY,
         JSON.stringify(Object.fromEntries(deliveredReminders)),
       );
-    } catch (_) { /* private browsing can disable storage */ }
+    } catch (_) {  }
   }
 
   function reminderKey(event) {
@@ -352,7 +314,6 @@
     speak(reminderMessage(ready));
   }
 
-  /* Timed calendar events that have just come due. */
   async function dueEvents() {
     const response = await fetch('/api/events', {cache: 'no-store'});
     if (!response.ok) throw new Error(`calendar returned ${response.status}`);
@@ -366,8 +327,6 @@
     });
   }
 
-  /* Doses Medora is waiting on. The server decides what counts as due - the
-     same few minutes the dispenser gives an alarm before it gives up. */
   async function dueDoses() {
     const response = await fetch('/api/medicines/due', {cache: 'no-store'});
     if (!response.ok) throw new Error(`medora returned ${response.status}`);
@@ -385,7 +344,6 @@
     reminderCheckInFlight = true;
 
     try {
-      // One of the two failing is no reason to miss the other.
       const results = await Promise.allSettled([dueEvents(), dueDoses()]);
       results.forEach((result) => {
         if (result.status === 'rejected') {
@@ -412,14 +370,10 @@
 
   function fail(message) {
     setState('error');
-    // Let the shake finish before speaking - but if the user has already
-    // pressed again in that window, their new question wins.
     setTimeout(() => {
       if (state === 'error') speak(message);
     }, 620);
   }
-
-  /* ── input ────────────────────────────────────────────────────────────── */
 
   function press() {
     switch (state) {
@@ -439,15 +393,13 @@
         setState('idle');
         break;
       case 'blocked':
-        startListening();   // let them retry after granting permission
+        startListening();
         break;
     }
   }
 
   orb.addEventListener('pointerdown', () => {
     root.style.setProperty('--press', '1');
-    // Safari only allows speech that descends from a user gesture, so burn a
-    // silent utterance on the very first touch.
     if (!primed && 'speechSynthesis' in window) {
       primed = true;
       const u = new SpeechSynthesisUtterance(' ');
@@ -463,15 +415,10 @@
 
   orb.addEventListener('click', press);
 
-  // Keep a stray Space from scrolling the page, without cancelling the native
-  // Space-to-activate behaviour of the orb or the app-dock buttons.
   window.addEventListener('keydown', (e) => {
     if (e.code === 'Space' && e.target === document.body) e.preventDefault();
   });
 
-  // Check once at startup, once every minute, and once after returning to a
-  // backgrounded tab. Timed events are announced once; all-day events remain
-  // visual calendar entries because they have no specific moment to announce.
   checkReminders();
   reminderTimer = setInterval(checkReminders, REMINDER_INTERVAL_MS);
   document.addEventListener('visibilitychange', () => {

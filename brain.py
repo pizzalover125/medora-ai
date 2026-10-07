@@ -18,10 +18,7 @@ API_URL = "https://ai.hackclub.com/proxy/v1/chat/completions"
 MODEL = os.getenv("HACKCLUB_MODEL", "google/gemini-3.8-flash")
 TIMEOUT = 45
 
-# Whether the model is offered the search tool at all.
 SEARCH_ENABLED = os.getenv("EXA_SEARCH", "1") == "1"
-# How many times it may search before it has to answer with what it has. Each
-# round is a network round trip, and the person is waiting in silence.
 MAX_ROUNDS = int(os.getenv("EXA_MAX_ROUNDS", "2"))
 MAX_PARALLEL = 3
 
@@ -64,16 +61,12 @@ container number unless it helps them find the right pills. This is the schedule
 advice: what to take and whether to change a dose is still a question for their doctor or \
 pharmacist."""
 
-# Whatever the model does, the text is going straight to a speech synthesiser,
-# which reads "http colon slash slash" out loud. Strip it all defensively.
-_LINK = re.compile(r"\[([^\]]*)\]\([^)]*\)")      # [text](url) -> text
+_LINK = re.compile(r"\[([^\]]*)\]\([^)]*\)")
 _URL = re.compile(r"\(?\b(?:https?://|www\.)\S+\)?")
 _MARKDOWN = re.compile(r"[*_`#>\[\]|]|~~")
 
-
 class BrainError(RuntimeError):
     """The upstream AI call failed."""
-
 
 def _chat(messages, tools=None):
     """One call to the chat endpoint. Returns the assistant message."""
@@ -113,16 +106,11 @@ def _chat(messages, tools=None):
     msg["_finish"] = choice.get("finish_reason")
     return msg
 
-
 def answer(question: str):
     """Ask the model a question. It decides for itself whether to search.
 
     Returns (speakable_text, searched)."""
-    # Without today's date the model burns a whole search working out when
-    # "last weekend" was.
     today = datetime.date.today().strftime("%A, %d %B %Y")
-    # Stated first and repeated in the rules: the model otherwise falls back on
-    # its training cutoff and searches for the wrong year.
     messages = [
         {"role": "system",
          "content": f"Today's date is {today}.\n\n{SYSTEM_PROMPT}"},
@@ -139,10 +127,8 @@ def answer(question: str):
             text = _speakable(msg.get("content"))
             if text:
                 return text, searched
-            break        # nothing to say and nothing to call: fall through
+            break
 
-        # (call, rendered result) pairs, kept in whatever order they resolve -
-        # only the tool_call_id has to line up on the way back.
         kept = []
         search_calls, search_queries = [], []
         for call in calls[:MAX_PARALLEL]:
@@ -168,11 +154,8 @@ def answer(question: str):
             kept.extend(zip(search_calls, search.run(search_queries)))
 
         if not kept:
-            # It asked to call a tool but gave nothing usable; make it answer.
             break
 
-        # Echo the assistant turn back with only the calls we actually ran -
-        # every tool_call id must be answered or the next request is rejected.
         messages.append({"role": "assistant",
                          "content": msg.get("content") or "",
                          "tool_calls": [call for call, _ in kept]})
@@ -181,13 +164,9 @@ def answer(question: str):
                              "tool_call_id": call.get("id"),
                              "content": result})
 
-    # Out of rounds: one last call with no tools, so it has to answer.
     msg = _chat(messages, tools=None)
     text = _speakable(msg.get("content"))
 
-    # A model that spent every round searching sometimes comes back with
-    # nothing at all. Silence is the worst possible answer here - the orb would
-    # mime speaking and say nothing - so ask once more, plainly.
     if not text:
         log.warning("empty answer after %d round(s) (finish=%s); asking again",
                     MAX_ROUNDS, msg.get("_finish"))
@@ -204,7 +183,6 @@ def answer(question: str):
         return "I'm sorry, I couldn't find that out just now.", searched
 
     return text, searched
-
 
 def _speakable(text: str) -> str:
     """Strip anything that would be read aloud as punctuation noise."""

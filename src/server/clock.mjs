@@ -1,16 +1,3 @@
-/* The senior's wall clock.
-
-   A function runs in UTC, wherever the senior is. The schedule, the calendar
-   and "today's date" are all about the clock on the senior's wall, so every
-   request from their page carries its IANA time zone (X-Timezone, see
-   static/session.js) and the last one seen is kept for requests that arrive
-   without one.
-
-   Times here are "wall milliseconds": the senior's local date and time
-   written as if it were UTC. Read them back with the getUTC* methods. That is
-   the same trick the dispenser uses - minutes since 1970 in local time - so
-   nothing downstream has to know about offsets. */
-
 import { read, write } from './store.mjs';
 
 let current = 'UTC';
@@ -24,7 +11,6 @@ function valid(tz) {
   }
 }
 
-/* Called once per request, before anything reads the clock. */
 export async function useTimezone(header) {
   const settings = await read('settings', {});
   const stored = valid(settings.tz) ? settings.tz : null;
@@ -62,7 +48,6 @@ export const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday'
 export const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July',
                             'August', 'September', 'October', 'November', 'December'];
 
-/* "Saturday, 03 October 2026" - what the model is told today is. */
 export function longToday(wall = wallNow()) {
   const day = String(wall.getUTCDate()).padStart(2, '0');
   return `${DAY_NAMES[wall.getUTCDay()]}, ${day} ${MONTH_NAMES[wall.getUTCMonth()]} ` +

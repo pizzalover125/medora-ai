@@ -1,8 +1,3 @@
-/* ---------------------------------------------------------------------------
-   The game window. One at a time, dragged by its bar, closed by its X.
-   Same ink-on-paper palette as the orb - nothing decorative.
---------------------------------------------------------------------------- */
-
 :root {
   --card: #fbf9f6;
   --card-ink: #0b0b0c;
@@ -35,7 +30,6 @@
     0 24px 60px rgb(var(--line) / .16),
     0 4px 12px rgb(var(--line) / .08);
   font: 500 15px/1.4 ui-sans-serif, -apple-system, system-ui, sans-serif;
-  /* --x/--y are the drag offset, set from JS. */
   transform: translate(calc(-50% + var(--x, 0px)), calc(-50% + var(--y, 0px)))
              scale(var(--s, 1));
   opacity: var(--o, 1);
@@ -46,14 +40,11 @@
   -webkit-user-select: none;
 }
 
-/* Placement is measured off-screen. Enabling the transition only after the
-   final coordinates are committed prevents a center-to-random-position fly. */
 .win.is-placing {
   visibility: hidden;
   transition: none;
 }
 
-/* While dragging, follow the finger exactly - no easing lag. */
 .win.is-dragging { transition: none; }
 
 .win__bar {
@@ -89,7 +80,6 @@
   gap: 16px;
 }
 
-/* A single quiet line of state - round number, score. Never more. */
 .win__note {
   font-size: 13px;
   font-variant-numeric: tabular-nums;
@@ -103,8 +93,6 @@
   font-variant-numeric: tabular-nums;
   letter-spacing: .01em;
 }
-
-/* ── shared feedback ────────────────────────────────────────────────────── */
 
 @keyframes win-shake {
   0%, 100% { transform: translateX(0); }
@@ -120,8 +108,6 @@
   100% { transform: scale(1); }
 }
 .pop { animation: win-pop 340ms var(--spring); }
-
-/* ── Simon ──────────────────────────────────────────────────────────────── */
 
 .simon {
   display: grid;
@@ -147,8 +133,6 @@
 }
 .simon[data-locked="1"] button { cursor: default; }
 
-/* ── Difference ─────────────────────────────────────────────────────────── */
-
 .diff {
   display: grid;
   grid-template-columns: repeat(10, 1fr);
@@ -170,8 +154,6 @@
 }
 .diff button:hover { background: rgb(var(--line) / .06); }
 .diff button.found { background: rgb(63 143 95 / .22); transform: scale(1.25); }
-
-/* ── Scramble ───────────────────────────────────────────────────────────── */
 
 .scramble__letters {
   display: flex;
@@ -209,8 +191,6 @@
 .win input:focus { border-color: rgb(var(--line) / .42); }
 .win input.right  { border-color: var(--good); color: var(--good); }
 .win input.wrong  { border-color: var(--bad); }
-
-/* ── Multi ──────────────────────────────────────────────────────────────── */
 
 .multi {
   display: grid;

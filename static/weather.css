@@ -1,15 +1,8 @@
-/* ---------------------------------------------------------------------------
-   The forecast window. Same card, same ink as the games - the only thing
-   added is the bar under each day, which is the week's temperature range.
---------------------------------------------------------------------------- */
-
 .win__body.wx {
   justify-items: stretch;
   gap: 0;
   padding: 0 20px 20px;
 }
-
-/* ── today ──────────────────────────────────────────────────────────────── */
 
 .wx__now {
   display: flex;
@@ -54,8 +47,6 @@
   line-height: 1.5;
 }
 
-/* ── the three readings ─────────────────────────────────────────────────── */
-
 .wx__facts {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -80,8 +71,6 @@
   text-transform: uppercase;
   opacity: .4;
 }
-
-/* ── the week ───────────────────────────────────────────────────────────── */
 
 .wx__week { padding-top: 6px; }
 
@@ -116,7 +105,6 @@
 .wx__day .wx__hi { text-align: right; }
 .wx__now .wx__lo { opacity: .42; }
 
-/* The week's whole span is the track; the bar is this day's slice of it. */
 .wx__track {
   height: 4px;
   border-radius: 2px;

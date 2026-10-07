@@ -1,12 +1,3 @@
-/* ---------------------------------------------------------------------------
-   The homeroom layer: the palette and the buttons shared by the apps dressed
-   in it - Medora and News. An app opts in by putting `hr` on its window body.
-
-   Greyscale only, 4px corners, lowercase chrome. The tokens sit on the window
-   rather than on its body because a custom property only reaches downwards,
-   and the window itself paints with them.
---------------------------------------------------------------------------- */
-
 .win:has(> .win__body.hr) {
   --hr-card: hsl(0 0% 100%);
   --hr-fg: hsl(0 0% 5%);
@@ -36,15 +27,12 @@
   letter-spacing: -0.005em;
 }
 
-/* The window's own chrome follows the app inside it. */
 .win:has(> .win__body.hr) .win__bar { padding-bottom: 0; }
 .win:has(> .win__body.hr) .win__close { color: var(--hr-muted-fg); }
 .win:has(> .win__body.hr) .win__close:hover {
   color: var(--hr-fg);
   background: var(--hr-muted);
 }
-
-/* ── buttons ───────────────────────────────────────────────────────────── */
 
 .hr-btn {
   display: inline-flex;

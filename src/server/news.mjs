@@ -1,9 +1,3 @@
-/* The news, answered without the model.
-
-   Headlines come from the outlets' own RSS feeds - no key, no account. Every
-   section is read from two outlets so one of them being down does not empty
-   the app. Only headlines are read aloud, three at a time. */
-
 import crypto from 'node:crypto';
 import { XMLParser } from 'fast-xml-parser';
 import { HttpError, read, update } from './store.mjs';
@@ -33,10 +27,8 @@ export const CATEGORIES = [
 export const BY_KEY = Object.fromEntries(CATEGORIES.map((c) => [c.key, c]));
 const DEFAULT_CATEGORIES = ['world', 'nation', 'health'];
 
-const feeds = new Map();   // url -> {at, stories}, held while the function is warm
+const feeds = new Map();
 const parser = new XMLParser({ ignoreAttributes: true, processEntities: true, htmlEntities: true });
-
-/* ── the feeds ───────────────────────────────────────────────────────── */
 
 const ENTITIES = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ' };
 function clean(value) {
@@ -137,8 +129,6 @@ export async function stories(categories, force = false, limit = 24) {
   return mixed.slice(0, limit);
 }
 
-/* ── what the senior follows, and where the reading is up to ─────────── */
-
 const KEY = 'news';
 const blank = () => ({ categories: null, reading: { stories: [], at: 0, atTime: 0, category: null } });
 
@@ -197,8 +187,6 @@ export async function lastRead() {
   const r = await reading();
   return [r.stories, r.category];
 }
-
-/* ── saying it out loud ──────────────────────────────────────────────── */
 
 const spokenTitle = (s) => s.title.trim().replace(/\.+$/, '').replace(/\s*[-–—]\s*$/, '');
 const stop = (t) => (/[.?!]$/.test(t) ? t : `${t}.`);

@@ -1,31 +1,19 @@
-/* ---------------------------------------------------------------------------
-   News - the headlines, in as few words as the page can manage.
-
-   Three views in one window: the list, one story, and the settings where the
-   sections being followed are chosen. The voice can land on any of them.
-
-   window.News.open()                    the list
-   window.News.open({category: 'health'})  one section
-   window.News.open({story})             one story, as read aloud
-   window.News.open({view: 'settings'})  the settings
---------------------------------------------------------------------------- */
-
 window.News = (() => {
   'use strict';
 
-  const STALE_MS = 10 * 60 * 1000;   // the server caches the feeds as well
+  const STALE_MS = 10 * 60 * 1000;
 
   let stories = [];
-  let catalogue = [];                // [{key, label, spoken, following}]
+  let catalogue = [];
   let selected = [];
   let loadedAt = 0;
   let loadError = '';
   let busy = false;
 
   let body = null;
-  let view = 'list';                 // list | story | settings
-  let filter = null;                 // a category key, or null for the mix
-  let story = null;                  // the story being shown
+  let view = 'list';
+  let filter = null;
+  let story = null;
   let notice = '';
   let noticeTimer;
 
@@ -71,12 +59,10 @@ window.News = (() => {
     return node;
   }
 
-  /* ── the server ──────────────────────────────────────────────────────── */
-
   async function requestJSON(url, options = {}) {
     const response = await fetch(url, options);
     let data = {};
-    try { data = await response.json(); } catch (_) { /* handled below */ }
+    try { data = await response.json(); } catch (_) {  }
     if (!response.ok) throw new Error(data.message || 'The news could not be fetched.');
     return data;
   }
@@ -124,7 +110,6 @@ window.News = (() => {
       return;
     }
 
-    // Show the change at once; the server is the one that decides.
     catalogue = catalogue.map((entry) => ({...entry, following: next.includes(entry.key)}));
     render();
 
@@ -143,8 +128,6 @@ window.News = (() => {
     }
   }
 
-  /* ── the head ────────────────────────────────────────────────────────── */
-
   function head() {
     const bar = el('div', 'news__head');
     bar.append(el('h2', 'news__title', 'news'));
@@ -159,7 +142,6 @@ window.News = (() => {
     return bar;
   }
 
-  /* The sections being followed, plus whichever one is being looked at. */
   function chips() {
     if (view !== 'list') return null;
 
@@ -187,8 +169,6 @@ window.News = (() => {
     });
     return row;
   }
-
-  /* ── the list ────────────────────────────────────────────────────────── */
 
   function storyRow(item, index) {
     const row = el('button', 'news-story');
@@ -231,8 +211,6 @@ window.News = (() => {
     return panel;
   }
 
-  /* ── one story ───────────────────────────────────────────────────────── */
-
   function storyView() {
     const panel = el('div', 'news__body');
 
@@ -272,8 +250,6 @@ window.News = (() => {
     }
   }
 
-  /* ── settings ────────────────────────────────────────────────────────── */
-
   function settingsView() {
     const panel = el('div', 'news__body');
     panel.append(el('p', 'news__note', 'the news you want to hear about'));
@@ -297,8 +273,6 @@ window.News = (() => {
     panel.append(list);
     return panel;
   }
-
-  /* ── the foot ────────────────────────────────────────────────────────── */
 
   function footText() {
     if (notice) return notice;
@@ -329,8 +303,6 @@ window.News = (() => {
     }
     return bar;
   }
-
-  /* ── drawing it ──────────────────────────────────────────────────────── */
 
   function render() {
     if (!body || !body.isConnected) return;
@@ -373,8 +345,6 @@ window.News = (() => {
       },
     });
 
-    // The voice has already been told the headlines; the window only has to
-    // catch up when what it is holding is stale, or is the wrong section.
     const stale = !loadedAt || (Date.now() - loadedAt) > STALE_MS;
     if (stale || (options.category !== undefined && options.category !== null)) {
       load({category: filter});

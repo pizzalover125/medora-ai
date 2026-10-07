@@ -1,18 +1,7 @@
-/* Speech to text, through the same Hack Club AI key as the answers.
-
-   The Flask app ran faster-whisper on the machine's own CPU. A serverless
-   function cannot hold a 250 MB model, so the clip goes to an audio-capable
-   model on the proxy instead. The browser does the decoding - it sends
-   16 kHz mono WAV, and the loudest sample it heard, so a dead microphone
-   can still be told apart from a quiet room before anything is uploaded. */
-
 import { BrainError, chat } from './brain.mjs';
 
 export const SILENCE_PEAK = 0.005;
 
-/* Measured on the proxy (Oct 2026): about 1.1 s a question against 3 s for
-   the chat model, and the only fast one that kept quiet on a silent clip
-   rather than inventing a question. */
 const MODEL = 'openai/gpt-audio-mini';
 const NOTHING = 'NO_SPEECH';
 

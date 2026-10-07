@@ -1,9 +1,3 @@
-/* The forecast, answered without the model.
-
-   Location comes from the request itself - Netlify geolocates the caller's
-   IP, which is the senior's own connection - and the forecast from
-   Open-Meteo. No API key, no account. The spoken line covers today only. */
-
 import { HttpError } from './store.mjs';
 
 const FORECAST_URL = 'https://api.open-meteo.com/v1/forecast';
@@ -43,7 +37,7 @@ const UNKNOWN = ['Unsettled', 'unsettled', 'cloud'];
 const SHORT_DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const LONG_DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
-const cache = new Map();   // "lat,lon" -> {at, report}
+const cache = new Map();
 
 async function where(context) {
   const geo = context && context.geo;
@@ -55,8 +49,6 @@ async function where(context) {
       tz: geo.timezone || 'auto',
     };
   }
-  // Local development has no geolocation - fall back to the IP lookup the
-  // Flask app used.
   const res = await fetch('https://ipinfo.io/json', { signal: AbortSignal.timeout(8000) });
   if (!res.ok) throw new Error(`ipinfo ${res.status}`);
   const data = await res.json();
@@ -137,7 +129,6 @@ export async function forecast(context) {
     cache.set(key, { at: Date.now(), report });
     return report;
   } catch (error) {
-    // A stale forecast beats no forecast.
     if (cached) return cached.report;
     throw new HttpError(502, 'weather', error.message);
   }

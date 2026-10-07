@@ -1,10 +1,3 @@
-/* Every /api/* route, in one function - the same routes app.py served, plus
-   the ones caretaker links need.
-
-   Two kinds of caller (see src/server/auth.mjs): the senior's signed-in
-   device, and a caretaker holding a link token. A route says which it
-   accepts, and a caretaker is only ever handed their own conversation. */
-
 import * as auth from '../../src/server/auth.mjs';
 import * as brain from '../../src/server/brain.mjs';
 import * as calls from '../../src/server/calls.mjs';
@@ -35,16 +28,12 @@ async function body(req) {
 
 const linkFor = (req, contact) => `${new URL(req.url).origin}/c/${contact.token}`;
 
-/* The caretaker behind a token, or a 404 that does not say whether the
-   token ever existed. */
 async function caretaker(token) {
   const contact = await messages.contactByToken(token);
   if (!contact) throw new HttpError(404, 'link_not_found', 'This link is no longer active. Ask for a new one.');
   return contact;
 }
 
-/* For routes both sides use: a token makes it the caretaker, otherwise it
-   must be the senior's device. */
 async function caller(req, token) {
   if (token) {
     const contact = await caretaker(token);
@@ -54,8 +43,6 @@ async function caller(req, token) {
   return { side: messages.SENIOR, slug: null, contact: null };
 }
 
-/* Waiting on a push would slow down the reply it is about, so it finishes
-   after the response when the platform allows it. */
 function later(context, promise) {
   const safe = promise.catch((error) => console.warn('background task failed', error.message));
   if (context && typeof context.waitUntil === 'function') context.waitUntil(safe);
@@ -70,15 +57,13 @@ const route = (method, pattern, handler) => {
   routes.push({ method, regex, keys, handler });
 };
 
-/* ── session ─────────────────────────────────────────────────────────── */
-
 route('GET', '/session', async ({ req }) =>
   json({ required: auth.loginRequired(), senior: auth.isSenior(req) }));
 
 route('POST', '/session', async ({ req }) => {
   const data = await body(req);
   if (!auth.checkPasscode(data && data.passcode)) {
-    await new Promise((resolve) => setTimeout(resolve, 900));   // slow down guessing
+    await new Promise((resolve) => setTimeout(resolve, 900));
     return json({ error: 'wrong_passcode', message: 'That passcode is not right.' }, 401);
   }
   return json({ senior: true }, 200, { 'Set-Cookie': auth.sessionCookie(req) });
@@ -90,8 +75,6 @@ route('GET', '/health', async () => json({
   ready: true, model: process.env.HACKCLUB_MODEL || 'google/gemini-3.8-flash',
   has_key: !!process.env.HACKCLUB_API_KEY, push: !!push.publicKey(),
 }));
-
-/* ── the senior's apps ───────────────────────────────────────────────── */
 
 route('GET', '/weather', async ({ req, context }) => {
   auth.requireSenior(req);
@@ -175,8 +158,6 @@ route('POST', '/news/settings', async ({ req }) => {
   return json({ categories: await news.catalogue(), selected: await news.selected() });
 });
 
-/* ── messages: the senior's side ─────────────────────────────────────── */
-
 route('GET', '/contacts', async ({ req }) => {
   auth.requireSenior(req);
   return json({ contacts: await messages.overview() });
@@ -198,7 +179,6 @@ route('DELETE', '/contacts/:slug', async ({ req, params, context }) => {
   return json({ contact: removed, contacts: await messages.overview() });
 });
 
-/* What this person may see and be told - set from their link panel. */
 route('PATCH', '/contacts/:slug', async ({ req, params }) => {
   auth.requireSenior(req);
   const d = await body(req);
@@ -209,8 +189,6 @@ route('PATCH', '/contacts/:slug', async ({ req, params }) => {
   return json({ contact });
 });
 
-/* The link the senior shares. GET shows the current one; POST replaces it,
-   which closes the old link immediately. */
 route('GET', '/contacts/:slug/link', async ({ req, params }) => {
   auth.requireSenior(req);
   const contact = await messages.tokenFor(params.slug);
@@ -240,8 +218,6 @@ route('POST', '/messages/:slug', async ({ req, params, context }) => {
   return json({ message, messages: await messages.thread(params.slug, messages.SENIOR) }, 201);
 });
 
-/* ── messages: the caretaker's side ──────────────────────────────────── */
-
 route('GET', '/c/:token', async ({ params }) => {
   const contact = await caretaker(params.token);
   return json({ contact: messages.publicContact(contact), vapidKey: push.publicKey() });
@@ -264,8 +240,6 @@ route('POST', '/c/:token/messages', async ({ req, params, context }) => {
   return json({ message, messages: await messages.thread(contact.slug, messages.CONTACT) }, 201);
 });
 
-/* ── the caretaker's view of the day (only if the senior allowed it) ─── */
-
 async function sharingDay(token) {
   const contact = await caretaker(token);
   if (!contact.permissions.day) {
@@ -285,8 +259,6 @@ function spokenWhen(date, time) {
 }
 
 route('GET', '/c/:token/today', async ({ params }) => {
-  // Not shared is an ordinary answer here, not an error: the page just
-  // hides the tab.
   const contact = await caretaker(params.token);
   if (!contact.permissions.day) return json({ shared: false });
   const today = isoDate(wallNow());
@@ -300,9 +272,6 @@ route('GET', '/c/:token/today', async ({ params }) => {
   });
 });
 
-/* A reminder from a caretaker. It lands on the senior's calendar, so the
-   assistant says it out loud when it comes due, and a note in the
-   conversation says who added it. */
 route('POST', '/c/:token/events', async ({ params, req, context }) => {
   const contact = await sharingDay(params.token);
   const d = await body(req);
@@ -318,7 +287,6 @@ route('POST', '/c/:token/events', async ({ params, req, context }) => {
   return json({ event, note, events: (await events.listAll()).filter((e) => e.date >= today).slice(0, 8) }, 201);
 });
 
-/* An installable app for the caretaker, opening straight on their link. */
 route('GET', '/manifest/:token', async ({ params }) => {
   const contact = await caretaker(params.token);
   return new Response(JSON.stringify({
@@ -332,8 +300,6 @@ route('GET', '/manifest/:token', async ({ params }) => {
     icons: [{ src: '/icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' }],
   }), { headers: { 'Content-Type': 'application/manifest+json', 'Cache-Control': 'no-store' } });
 });
-
-/* ── push ────────────────────────────────────────────────────────────── */
 
 route('GET', '/push/key', async () => json({ key: push.publicKey() }));
 
@@ -352,8 +318,6 @@ route('DELETE', '/push', async ({ req }) => {
   if (d.endpoint) await push.unsubscribe(who.slug, d.endpoint);
   return json({ ok: true });
 });
-
-/* ── calls ───────────────────────────────────────────────────────────── */
 
 route('GET', '/ice', async ({ req, url }) => {
   await caller(req, url.searchParams.get('token'));
@@ -387,8 +351,6 @@ route('POST', '/calls', async ({ req }) => {
   else throw new HttpError(400, 'invalid_call', 'Unknown call action.');
   return json({ call });
 });
-
-/* ── the orb ─────────────────────────────────────────────────────────── */
 
 async function newsReply(kind, category, question) {
   const reply = (speak, extra = {}) => json({ action: 'news', question, speak, ...extra });
@@ -443,7 +405,6 @@ route('POST', '/ask', async ({ req, context }) => {
   }
   if (clip.size < 1024) return json({ error: 'empty', speak: "I didn't hear anything. Please try again." });
 
-  // A dead microphone and a silent room need different advice.
   const peak = Number.parseFloat(form.get('peak'));
   if (Number.isFinite(peak) && peak < stt.SILENCE_PEAK) {
     return json({ error: 'no_signal', speak: "I can't hear your microphone. Please check that it is turned on." });
@@ -462,9 +423,6 @@ route('POST', '/ask', async ({ req, context }) => {
   console.log('heard:', JSON.stringify(question));
   if (!question) return json({ error: 'silence', speak: "I didn't hear a question. Please try again." });
 
-  // The words go out the moment they are known, so the captions show the
-  // question while the answer is still being worked out. Two lines of JSON:
-  // {heard}, then the reply with the status it would have had on its own.
   const encoder = new TextEncoder();
   const line = (data) => encoder.encode(`${JSON.stringify(data)}\n`);
   const stream = new ReadableStream({
@@ -510,7 +468,6 @@ async function answerFor(question, context) {
   const heardNews = intents.matchNews(question);
   if (heardNews) {
     const [kind, category] = heardNews;
-    // "tell me more" and friends only belong to the news while it is being read.
     if (!['more', 'next', 'repeat'].includes(kind) || await news.readingActive()) {
       return newsReply(kind, category, question);
     }
@@ -529,8 +486,6 @@ async function answerFor(question, context) {
   }
 }
 
-/* ── dispatch ────────────────────────────────────────────────────────── */
-
 export default async (req, context) => {
   const url = new URL(req.url);
   const matches = routes.filter((r) => r.regex.test(url.pathname));
@@ -542,7 +497,6 @@ export default async (req, context) => {
   const params = Object.fromEntries(found.keys.map((k, i) => [k, values[i]]));
 
   try {
-    // Only the senior's own device sets the clock; a caretaker may be anywhere.
     const fromSenior = !url.pathname.startsWith('/api/c/') && auth.isSenior(req);
     await useTimezone(fromSenior ? req.headers.get('x-timezone') : null);
     return await found.handler({ req, context, url, params });

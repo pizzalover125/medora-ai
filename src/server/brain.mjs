@@ -1,7 +1,3 @@
-/* Question answering via the Hack Club AI API (OpenAI-compatible proxy),
-   with web search, the calendar and Medora offered as tools. A port of
-   brain.py and search.py. */
-
 import { longToday, wallNow } from './clock.mjs';
 import * as events from './events.mjs';
 import * as medicines from './medicines.mjs';
@@ -158,7 +154,7 @@ export async function answer(question) {
     for (const call of calls.slice(0, MAX_PARALLEL)) {
       const fn = call.function || {};
       let args = {};
-      try { args = JSON.parse(fn.arguments || '{}') || {}; } catch { /* empty args */ }
+      try { args = JSON.parse(fn.arguments || '{}') || {}; } catch {  }
       if (fn.name === 'web_search') {
         const query = (args.query || '').trim();
         if (query) searches.push([call, query]);
@@ -175,14 +171,12 @@ export async function answer(question) {
     }
     if (!kept.length) break;
 
-    // Every tool_call id must be answered or the next request is rejected.
     messages.push({ role: 'assistant', content: msg.content || '', tool_calls: kept.map(([c]) => c) });
     for (const [call, result] of kept) {
       messages.push({ role: 'tool', tool_call_id: call.id, content: result });
     }
   }
 
-  // Out of rounds: one last call with no tools, so it has to answer.
   let text = speakable((await chat(messages)).content);
   if (!text) {
     messages.push({

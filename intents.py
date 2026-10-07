@@ -2,7 +2,6 @@
 
 import re
 
-# key -> (spoken label, phrases the transcriber might produce)
 GAMES = {
     "simon": ("Simon", (
         "simon", "simon says", "simone", "cyman", "sigh man", "simon game",
@@ -13,7 +12,6 @@ GAMES = {
     )),
     "scramble": ("Scramble", (
         "scramble", "scrambles", "scrambled", "word scramble", "unscramble",
-        # the transcriber reaches for the far more common real word
         "scrabble", "scrable",
     )),
     "multi": ("Multi", (
@@ -28,7 +26,6 @@ _PLAY = re.compile(
     re.I,
 )
 _TRAILING = re.compile(r"\s+(?:game|please|now|for me)$", re.I)
-
 
 def match_game(text: str):
     """Return (key, label) if this asks to play a game, else None."""
@@ -50,7 +47,6 @@ def match_game(text: str):
         if rest in aliases:
             return key, label
 
-    # Looser pass: the name appearing anywhere in what followed "play".
     for key, (label, aliases) in GAMES.items():
         for alias in aliases:
             if re.search(rf"\b{re.escape(alias)}\b", rest):
@@ -58,15 +54,11 @@ def match_game(text: str):
 
     return None
 
-
-# The forecast is ours too - it's a lookup, not a question for the model.
 _WEATHER = re.compile(
     r"\b(weather|forecast|temperature|how (?:hot|cold|warm) is it|"
     r"is it (?:going to |gonna )?(?:rain|snow)|will it (?:rain|snow))\b",
     re.I,
 )
-# "weather" turns up inside questions that are really about somewhere else, or
-# some other day, and those belong to the model.
 _ELSEWHERE = re.compile(
     r"\b(?:in|at|for)\s+"
     r"(?!(?:my|me|us|all|here|home|today|tonight|right now|"
@@ -74,7 +66,6 @@ _ELSEWHERE = re.compile(
     r"\b(?:last|next|yesterday|tomorrow|weekend|month|year)\b",
     re.I,
 )
-
 
 def match_weather(text: str) -> bool:
     """True if this is a plain 'what's the weather' about here and now."""
@@ -84,10 +75,6 @@ def match_weather(text: str) -> bool:
         return False
     return not _ELSEWHERE.search(bare)
 
-
-# Medora is the pill dispenser, and it has an app of its own. Asking for it
-# by name, or for the next dose, is a lookup in the schedule - the model has
-# tools for the rest.
 _MEDORA_OPEN = re.compile(
     r"^(?:(?:please|hey|okay|ok)\s+)?"
     r"(?:(?:can|could|would) you\s+|i(?:'d| would) like to\s+|i want to\s+|"
@@ -99,9 +86,6 @@ _MEDORA_OPEN = re.compile(
     re.I,
 )
 
-# Only the plainly schedule-shaped questions. "Should I take ibuprofen for
-# this?" is a question about medicine, not about the schedule, and it
-# belongs to the model.
 _MEDORA_DUE = re.compile(
     r"\bnext\s+(?:dose|pill|medicine|medication|tablet)\b|"
     r"\b(?:dose|pill|medicine|medication|tablet)s?\s+(?:is\s+|are\s+)?due\b|"
@@ -111,10 +95,6 @@ _MEDORA_DUE = re.compile(
     re.I,
 )
 
-
-# "test medora" runs the hardware: the lights, the buzzer, the screen. Only
-# the word "test" does it - "check medora" is too easy to say by accident for
-# something that beeps and flashes in the room.
 _MEDORA_TEST = re.compile(
     r"^(?:(?:please|hey|okay|ok)\s+)?"
     r"(?:(?:can|could|would) you\s+|i want to\s+|let'?s\s+|lets\s+)?"
@@ -124,8 +104,6 @@ _MEDORA_TEST = re.compile(
     re.I,
 )
 
-# Reading the whole list out. The qualifier is required, so "what is the best
-# time to take medications?" stays a question for the model.
 _MEDORA_LIST = re.compile(
     r"\b(?:read|list|tell me|say|go through|run through|"
     r"what are|what'?s|what is)\s+"
@@ -134,7 +112,6 @@ _MEDORA_LIST = re.compile(
     r"(?:doses|dose schedule|schedule|medicines|medications)\b",
     re.I,
 )
-
 
 def match_medora(text: str):
     """Which Medora command this is, or None.
@@ -156,19 +133,8 @@ def match_medora(text: str):
         return "next"
     return None
 
-
-# ============================================================
-# News
-#
-# Nine commands, because a senior listening to headlines needs to be able to
-# say the obvious next thing: more about that one, the next one, say it
-# again. "more" and "next" are only ours while something is actually being
-# read - app.py checks that - since on their own they follow any answer.
-# ============================================================
-
 _NEWS = r"(?:news|headlines?|stories|story)"
 
-# Spoken ways of asking for each section we carry.
 NEWS_CATEGORIES = {
     "world": ("world", "international", "global", "overseas", "abroad", "foreign"),
     "nation": ("national", "nation", "america", "american", "domestic",
@@ -248,10 +214,7 @@ _NEWS_HEADLINES = re.compile(
     re.I,
 )
 
-# "Is there any news about the election?" is a question for the model, which
-# can search for it. Only a section we actually carry is ours.
 _NEWS_ABOUT = re.compile(rf"{_NEWS}\s+(?:about|on|regarding|concerning)\s+(.+)$", re.I)
-
 
 def _news_category(text):
     for key, aliases in NEWS_CATEGORIES.items():
@@ -259,7 +222,6 @@ def _news_category(text):
             if re.search(rf"\b{re.escape(alias)}\b", text, re.I):
                 return key
     return None
-
 
 def match_news(text: str):
     """Which news command this is - (kind, category) - or None.
@@ -288,7 +250,6 @@ def match_news(text: str):
 
     about = _NEWS_ABOUT.search(bare)
     if about:
-        # "news about health" is a section; "news about the election" is not.
         category = _news_category(about.group(1))
         return ("category", category) if category else None
 

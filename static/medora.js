@@ -1,23 +1,6 @@
-/* ---------------------------------------------------------------------------
-   Medora - the pill dispenser, in the assistant.
-
-   The same three views as the standalone Medora page: the doses coming up,
-   the medicines themselves, and the device. The schedule lives on the server
-   (medicines.py) so the voice can read and change it too; the Bluetooth link
-   to the dispenser can only live in the browser, so it lives here.
-
-   The link is deliberately outside the window. It opens when the page loads
-   and stays up while the assistant is running, so the dispenser keeps its
-   schedule whether or not anyone has the window open.
-
-   window.Medora.open()   open the window
-   window.Medora.connect()  choose a dispenser and pair with it
---------------------------------------------------------------------------- */
-
 window.Medora = (() => {
   'use strict';
 
-  /* The dispenser's Bluetooth service, as medora.ino advertises it. */
   const SERVICE_UUID = '7f71a001-4c7d-4b8d-9c42-7a3e1e7b1000';
   const COMMAND_UUID = '7f71a002-4c7d-4b8d-9c42-7a3e1e7b1000';
   const EVENT_UUID = '7f71a003-4c7d-4b8d-9c42-7a3e1e7b1000';
@@ -36,8 +19,6 @@ window.Medora = (() => {
   const DEFAULT_CHUNK_SIZE = 180;
   const MAX_CHUNK_SIZE = 480;
 
-  /* How late a dose may still be answered - the same five minutes the
-     device gives an alarm before it gives up on it. */
   const GRACE_MS = 5 * 60 * 1000;
   const REFRESH_MS = 30000;
 
@@ -49,18 +30,16 @@ window.Medora = (() => {
                       'Friday', 'Saturday'];
   const DEFAULT_TIMES = ['09:00', '18:00', '21:00'];
 
-  /* ── state ───────────────────────────────────────────────────────────── */
-
   let medicines = [];
-  let doses = new Map();          // "container:minute" -> {container, minute, status}
-  let activeDoseKey;              // the dose the device is alarming for
+  let doses = new Map();
+  let activeDoseKey;
   let loaded = false;
   let loadError = '';
 
-  let body = null;                // the open window's body, or null
+  let body = null;
   let tab = 'doses';
   let formOpen = false;
-  let draft = null;               // the half-filled new-medicine form
+  let draft = null;
   let notice = '';
   let noticeTimer;
 
@@ -79,10 +58,10 @@ window.Medora = (() => {
   let linkQueue = Promise.resolve();
   let chunkSize = loadChunkSize();
 
-  let deviceState = 'idle';       // idle | connecting | reconnecting | connected
+  let deviceState = 'idle';
   let deviceMessage = '';
-  let deviceHint = null;          // {text, code}, under the pair button
-  let syncState = '';             // syncing | pending | synced
+  let deviceHint = null;
+  let syncState = '';
   let syncMessage = '';
   let syncIndicatorTimer;
 
@@ -95,8 +74,6 @@ window.Medora = (() => {
   let selfTestScreenTimer;
 
   const supported = 'bluetooth' in navigator && window.isSecureContext;
-
-  /* ── small helpers ───────────────────────────────────────────────────── */
 
   const el = (tag, cls, text) => {
     const node = document.createElement(tag);
@@ -116,7 +93,6 @@ window.Medora = (() => {
     return timeFormatter.format(date).toLowerCase();
   }
 
-  /* "today", "tomorrow", then "mon 21" - the shortest true thing. */
   function formatDay(date) {
     const now = new Date();
     const start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -128,8 +104,6 @@ window.Medora = (() => {
     return dateFormatter.format(date).toLowerCase();
   }
 
-  /* Both ends count in local wall-clock minutes since 1970 - what the
-     device stores, so neither has to know about time zones. */
   function localMinute(date = new Date()) {
     return Math.floor((date.getTime() - date.getTimezoneOffset() * 60000) / 60000);
   }
@@ -173,8 +147,6 @@ window.Medora = (() => {
     return sorted.map((day) => DAY_NAMES[day].toLowerCase()).join(', ');
   }
 
-  /* The times say how many doses there are, and the count travels beside
-     the name, so neither needs saying here. What is left fits one line. */
   function describeMedicine(medicine) {
     return `${describeDays(medicine.days)} · ` +
            `${medicine.times.map(formatTime).join(', ')}`;
@@ -185,12 +157,10 @@ window.Medora = (() => {
     return CONTAINERS.filter((container) => !used.has(container));
   }
 
-  /* ── the schedule, as the server holds it ────────────────────────────── */
-
   async function requestJSON(url, options = {}) {
     const response = await fetch(url, options);
     let data = {};
-    try { data = await response.json(); } catch (_) { /* handled below */ }
+    try { data = await response.json(); } catch (_) {  }
     if (!response.ok) {
       throw new Error(data.message || 'Medora could not save that change.');
     }
@@ -205,7 +175,6 @@ window.Medora = (() => {
     loadError = '';
   }
 
-  /* Anything that changed the schedule has to reach the dispenser too. */
   function absorbAndSync(data) {
     absorb(data);
     requestSync();
@@ -223,8 +192,6 @@ window.Medora = (() => {
     if (!quiet) render();
   }
 
-  /* A dose answered here: written down on the server first, because that is
-     what the voice reads, then sent straight to the device. */
   async function answerDose(container, minute, status) {
     const key = doseKey(container, minute);
     doses.set(key, {container, minute, status});
@@ -246,8 +213,6 @@ window.Medora = (() => {
     render();
   }
 
-  /* A dose the device resolved on its own is already the truth. It is only
-     written down here, never echoed back to the device. */
   async function recordDeviceDose(container, minute, status) {
     const key = doseKey(container, minute);
     const existing = doses.get(key);
@@ -269,10 +234,6 @@ window.Medora = (() => {
     render();
   }
 
-  /* ── the doses coming up ─────────────────────────────────────────────── */
-
-  /* Worked out here rather than taken from the server so the list stays
-     right between refreshes, and the moment a dose falls due. */
   function upcomingDoses(limit, daysAhead = 62) {
     const now = new Date();
     const start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -319,14 +280,6 @@ window.Medora = (() => {
            (dose.at <= now && now - dose.at <= GRACE_MS);
   }
 
-  /* ── wire format ─────────────────────────────────────────────────────── */
-  /*
-     Records are newline separated so a whole schedule travels in a handful
-     of packets instead of one packet per record, and occurrence minutes go
-     over the air in base 36 to keep those packets small. This is the format
-     medora.ino parses; it is not ours to change on one side only.
-  */
-
   function toBase36(value) {
     return Math.max(0, Math.floor(value)).toString(36);
   }
@@ -355,8 +308,6 @@ window.Medora = (() => {
     return DEFAULT_CHUNK_SIZE;
   }
 
-  /* The device reports the packet size it negotiated, so the next sync can
-     pack bigger chunks instead of guessing conservatively. */
   function rememberChunkSize(mtu) {
     if (!Number.isInteger(mtu) || mtu < 23 || mtu > 517) return;
     chunkSize = clampChunkSize(mtu - 3);
@@ -392,8 +343,6 @@ window.Medora = (() => {
       .sort((first, second) => first.minute - second.minute);
     const sent = recent.slice(-SYNC_RESULT_LIMIT);
 
-    /* The window says how far back this app is authoritative, so the device
-       can reply with just the doses it resolved on its own. */
     const windowStart = sent.length === recent.length
       ? nominalWindowStart
       : sent[0].minute;
@@ -428,8 +377,6 @@ window.Medora = (() => {
     return ['SYNC:BEGIN', ...records, `SYNC:END|${records.length}`];
   }
 
-  /* ── talking to the device ───────────────────────────────────────────── */
-
   function isLinkReady() {
     return Boolean(commandCharacteristic && bluetoothDevice &&
                    bluetoothDevice.gatt.connected);
@@ -450,8 +397,6 @@ window.Medora = (() => {
     }
   }
 
-  /* Web Bluetooth rejects overlapping GATT operations, so everything that
-     talks to the device goes through a single queue. */
   function runExclusive(task) {
     const result = linkQueue.then(task, task);
     linkQueue = result.then(() => undefined, () => undefined);
@@ -479,8 +424,6 @@ window.Medora = (() => {
       }, hideAfter);
     }
   }
-
-  /* ── sync ────────────────────────────────────────────────────────────── */
 
   function beginSyncConfirmation() {
     if (syncConfirmation) syncConfirmation.finish(false);
@@ -551,8 +494,6 @@ window.Medora = (() => {
       if (!isLinkReady()) {
         showSync('pending', 'saved · connect to sync');
       } else if (syncAttempt > SYNC_RETRY_DELAYS.length) {
-        /* The link looks up but is no longer carrying data. Dropping it is
-           the quickest way back to a working connection. */
         syncAttempt = 0;
         showSync('pending', 'reconnecting to sync');
         dropConnection();
@@ -565,11 +506,7 @@ window.Medora = (() => {
     }
   }
 
-  /* One answered dose is a single small write, so it lands on the device
-     long before the next full sync would. */
   function pushDoseResult(dose) {
-    /* A full sync is already owed and will carry this dose as well.
-       Acknowledging the single write would wrongly mark that sync done. */
     if (syncedRevision < syncRevision) { requestSync(); return; }
 
     const revision = ++syncRevision;
@@ -591,8 +528,6 @@ window.Medora = (() => {
       });
   }
 
-  /* ── what the device says ────────────────────────────────────────────── */
-
   function handleBluetoothEvent(event) {
     const message = new TextDecoder().decode(event.target.value).trim();
     if (!message) return;
@@ -610,7 +545,6 @@ window.Medora = (() => {
       return;
     }
 
-    /* Diagnostics traffic belongs to whichever check asked for it. */
     if (deliverDeviceEvent(message)) return;
 
     if (message.startsWith('PONG') || message.startsWith('DIAG|') ||
@@ -648,8 +582,6 @@ window.Medora = (() => {
     setDeviceState(deviceState, message.toLowerCase());
   }
 
-  /* ── the remembered dispenser ────────────────────────────────────────── */
-
   function rememberDevice(deviceId) {
     try {
       localStorage.setItem(DEVICE_STORAGE_KEY, deviceId);
@@ -669,10 +601,8 @@ window.Medora = (() => {
   function forgetRememberedDevice() {
     try {
       localStorage.removeItem(DEVICE_STORAGE_KEY);
-    } catch (error) { /* storage is optional */ }
+    } catch (error) {  }
   }
-
-  /* ── connecting ──────────────────────────────────────────────────────── */
 
   function clearLink() {
     commandCharacteristic = undefined;
@@ -713,8 +643,6 @@ window.Medora = (() => {
     }, delay);
   }
 
-  /* Anything that means someone is back in front of the assistant resets
-     the backoff and retries straight away. */
   function reconnectNow() {
     if (!keepConnected || !bluetoothDevice || connectionAttempt) return;
     if (bluetoothDevice.gatt.connected && commandCharacteristic) return;
@@ -738,10 +666,6 @@ window.Medora = (() => {
     }
   }
 
-  /* Chrome will not open a connection to a remembered device until it has
-     seen that device advertise since the page loaded, and a reload throws
-     that away. Listening for one advert first is what turns the "no longer
-     in range" failure into a reconnection. */
   function waitForAdvertisement(selectedDevice, timeout) {
     return new Promise((resolve, reject) => {
       const controller = new AbortController();
@@ -753,7 +677,7 @@ window.Medora = (() => {
         settled = true;
         clearTimeout(timer);
         selectedDevice.removeEventListener('advertisementreceived', onAdvertisement);
-        try { controller.abort(); } catch (_) { /* already gone */ }
+        try { controller.abort(); } catch (_) {  }
         return false;
       };
 
@@ -778,8 +702,6 @@ window.Medora = (() => {
       try {
         selectedDevice.watchAdvertisements({signal: controller.signal})
           .catch((error) => {
-            // Stopping the watch once an advert arrives rejects this promise
-            // too, which is not a failure.
             if (settled || selectedDevice.watchingAdvertisements) return;
             fail(error);
           });
@@ -802,8 +724,6 @@ window.Medora = (() => {
       } catch (error) {
         if (error.name === 'TimeoutError') throw error;
 
-        // Some browsers cannot watch for adverts at all; a plain connection
-        // attempt is still worth a try there.
         console.warn('[medora] could not watch for adverts', error);
         canWatchAdvertisements = false;
       }
@@ -834,7 +754,6 @@ window.Medora = (() => {
     const commands = await service.getCharacteristic(COMMAND_UUID);
     const events = await service.getCharacteristic(EVENT_UUID);
 
-    // Listen before subscribing so nothing the device sends is missed.
     events.removeEventListener('characteristicvaluechanged', handleBluetoothEvent);
     events.addEventListener('characteristicvaluechanged', handleBluetoothEvent);
     await events.startNotifications();
@@ -871,8 +790,6 @@ window.Medora = (() => {
         rememberDevice(selectedDevice.id);
         setDeviceState('connected', `connected to ${deviceLabel()}`);
 
-        /* Hand the device a fresh schedule the moment the link is up,
-           whether or not anything changed while it was away. */
         syncedRevision = 0;
         syncRevision = Math.max(syncRevision, 1);
         syncAttempt = 0;
@@ -883,16 +800,11 @@ window.Medora = (() => {
         console.warn('[medora] could not reach the dispenser', error);
         clearLink();
 
-        // Cancel a half open attempt so the next try starts clean.
-        try { selectedDevice.gatt.disconnect(); } catch (_) { /* already down */ }
+        try { selectedDevice.gatt.disconnect(); } catch (_) {  }
 
-        // The browser's view of where Medora is has gone stale, so the next
-        // attempt waits for it to advertise before asking again.
         needsAdvertisement = true;
 
         if (!canWatchAdvertisements) {
-          // Without advert watching there is no way back to a remembered
-          // device; the picker is the only route.
           mustPickAgain = true;
         }
 
@@ -950,8 +862,6 @@ window.Medora = (() => {
     const remembered = rememberedDeviceId();
     if (!remembered) return;
 
-    // Without the permissions backend the browser cannot hand a paired
-    // device back after a reload, so say how to turn it on.
     if (typeof navigator.bluetooth.getDevices !== 'function') {
       setDeviceState('idle', 'tap connect to reach medora', {
         text: 'for automatic reconnection, turn this on and restart chrome:',
@@ -970,8 +880,6 @@ window.Medora = (() => {
         return;
       }
 
-      // A device handed back by the browser has never been seen by this page,
-      // so it has to be found on the air before it can be reached.
       keepConnected = true;
       reconnectIndex = 0;
       needsAdvertisement = true;
@@ -980,13 +888,6 @@ window.Medora = (() => {
       console.warn('[medora] background reconnect failed', error);
     }
   }
-
-  /* ── diagnostics ─────────────────────────────────────────────────────── */
-  /*
-     Every check either resolves itself from what the device reports, or runs
-     the hardware and then asks what you saw. Nothing here writes to the
-     schedule or the dose log.
-  */
 
   const TEST_BADGES = {
     idle: 'not run',
@@ -1048,8 +949,6 @@ window.Medora = (() => {
     return runExclusive(() => writeDeviceCommand(command));
   }
 
-  /* The waiter is registered before the request goes out, so a reply that
-     arrives immediately cannot slip past it. */
   function askDevice(command, match, timeout) {
     const waiter = expectDeviceEvent(match, timeout);
     sendTestCommand(command).catch((error) => waiter.settle(undefined, error));
@@ -1305,16 +1204,6 @@ window.Medora = (() => {
     }
   }
 
-  /* ── the self test ───────────────────────────────────────────────────── */
-  /*
-     What "test medora" runs: every container light in turn, one beep, and a
-     message on the screen. The firmware holds its test screen for five
-     seconds and clears it itself, so the three seconds asked for here are
-     made by turning the screen off early.
-
-     None of it touches the schedule or the dose log.
-  */
-
   const SELF_TEST_SCREEN_MS = 3000;
   const SELF_TEST_BEEP_MS = 180;
 
@@ -1326,8 +1215,6 @@ window.Medora = (() => {
       const shownAt = Date.now();
 
       await sendTestCommand(`BEEP:${SELF_TEST_BEEP_MS}`);
-      // The sweep runs on the device for a couple of seconds; the write
-      // itself returns at once, so the beep and the screen are not held up.
       await sendTestCommand('TEST:LEDS');
 
       clearTimeout(selfTestScreenTimer);
@@ -1344,11 +1231,8 @@ window.Medora = (() => {
     }
   }
 
-  /* ── the window ──────────────────────────────────────────────────────── */
-
   const TABS = ['doses', 'medicines', 'device'];
 
-  /* Line icons in the lucide shape homeroom uses: 24-box, stroke 2, round. */
   const ICONS = {
     x: '<path d="M18 6 6 18M6 6l12 12"/>',
     plus: '<path d="M5 12h14M12 5v14"/>',
@@ -1431,8 +1315,6 @@ window.Medora = (() => {
     return el('p', 'medora__empty', message);
   }
 
-  /* Rows arrive the way homeroom's tiles do - a short rise, one after the
-     other, and never more than a few frames of it. */
   function stagger(node, index) {
     node.style.animationDelay = `${Math.min(index, 6) * 45}ms`;
     return node;
@@ -1444,8 +1326,6 @@ window.Medora = (() => {
     if (quantity > 1) line.append(el('span', 'medora-row__tag', `\u00d7${quantity}`));
     return line;
   }
-
-  /* ── doses ───────────────────────────────────────────────────────────── */
 
   function doseRow(dose, index) {
     const row = stagger(el('div', 'medora-row'), index);
@@ -1503,8 +1383,6 @@ window.Medora = (() => {
     panel.append(rows);
     return panel;
   }
-
-  /* ── medicines ───────────────────────────────────────────────────────── */
 
   function medicineRow(medicine, index) {
     const row = stagger(el('div', 'medora-row'), index);
@@ -1565,8 +1443,6 @@ window.Medora = (() => {
     return panel;
   }
 
-  /* ── the new medicine form ───────────────────────────────────────────── */
-
   function openForm() {
     if (!freeContainers().length) return;
 
@@ -1623,8 +1499,6 @@ window.Medora = (() => {
     name.addEventListener('input', () => { draft.name = name.value; });
     form.append(field('medication', name));
 
-    /* A refresh while the form is open can take the container this draft had
-       in mind, so it is pinned to one that is still free. */
     const available = freeContainers();
     if (!available.includes(draft.container)) draft.container = available[0];
 
@@ -1730,8 +1604,6 @@ window.Medora = (() => {
     render();
   }
 
-  /* ── the dispenser ───────────────────────────────────────────────────── */
-
   function badge(status) {
     const node = el('span', 'medora-test__badge');
     if (status === 'pass') node.append(icon('check'));
@@ -1820,13 +1692,6 @@ window.Medora = (() => {
     return panel;
   }
 
-  /* ── the foot ────────────────────────────────────────────────────────── */
-  /*
-     One line of context on the left, one action on the right - homeroom's
-     "total entries / clear" bar. Anything transient (a sync, something just
-     saved) takes the left slot while it lasts.
-  */
-
   function setNotice(message) {
     clearTimeout(noticeTimer);
     notice = message;
@@ -1904,8 +1769,6 @@ window.Medora = (() => {
     return bar;
   }
 
-  /* ── drawing it ──────────────────────────────────────────────────────── */
-
   function render() {
     if (!body || !body.isConnected) return;
 
@@ -1917,15 +1780,11 @@ window.Medora = (() => {
                 foot());
   }
 
-  /* A check reporting its progress redraws the list, which must not throw
-     away a half-typed form on another tab. */
   function renderTestsOnly() {
     if (!body || !body.isConnected || tab !== 'device') return;
     render();
   }
 
-  /* Background work - a refresh, a dose falling due - redraws only when
-     nothing is being typed into. */
   function renderIfIdle() {
     if (formOpen) return;
     render();
@@ -1956,10 +1815,7 @@ window.Medora = (() => {
     if (supported && !isLinkReady() && bluetoothDevice) reconnectNow();
   }
 
-  /* ── keeping up ──────────────────────────────────────────────────────── */
-
   setInterval(() => refresh({quiet: true}).then(renderIfIdle), REFRESH_MS);
-  // A dose falls due on the minute, not when the server is next asked.
   setInterval(renderIfIdle, 15000);
 
   if (supported) {
@@ -1974,8 +1830,6 @@ window.Medora = (() => {
       clearTimeout(syncRetryTimer);
       keepConnected = false;
 
-      // Hanging up now lets Medora advertise again immediately instead of
-      // waiting out the connection supervision timeout.
       dropConnection();
     });
 

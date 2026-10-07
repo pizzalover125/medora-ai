@@ -1,22 +1,3 @@
-/* Messages between the senior and the people who look after them.
-
-   Contacts are no longer a fixed list in the code. The senior adds someone
-   from the Messages window, and gets a link back - /c/<token> - to send
-   them. That link is the caretaker's whole account: it opens their one
-   conversation with the senior, lets them text and video call at any time,
-   and can be replaced from the senior's side, which shuts the old one.
-
-   Storage is shaped so two people writing at once can never lose a message:
-
-     contacts                      the address book (only the senior edits it)
-     msg/<slug>/<ms>-<from>-<id>   one key per message, written once
-     read/<slug>/<side>            the newest message that side has seen
-
-   A message is unread for one side if the other side sent it after that
-   side's read mark - so marking read is one small write, not a rewrite of
-   the conversation. A few people are seeded on first run so the app is not
-   empty on day one; each of them has a link of their own. */
-
 import crypto from 'node:crypto';
 import { newToken } from './auth.mjs';
 import { HttpError, keys, read, remove, update, write } from './store.mjs';
@@ -25,7 +6,7 @@ export const SENIOR = 'senior';
 export const CONTACT = 'contact';
 export const SENDERS = [SENIOR, CONTACT];
 const MAX_TEXT = 600;
-const MAX_SHOWN = 300;         // per conversation, newest kept
+const MAX_SHOWN = 300;
 const MAX_CONTACTS = 24;
 
 const SEED_CONTACTS = [
@@ -37,7 +18,6 @@ const SEED_CONTACTS = [
   { slug: 'doctor', name: 'Dr. Patel', relation: 'Doctor', calls: 'George' },
 ];
 
-// (sender, minutes ago, text, already read)
 const SEED = {
   son: [
     [CONTACT, 430, 'Morning Dad! Did you sleep any better last night?', true],
@@ -72,22 +52,16 @@ const iso = (ms) => new Date(Math.floor(ms / 1000) * 1000).toISOString().replace
 const stamp = (ms) => String(ms).padStart(14, '0');
 const other = (side) => (side === SENIOR ? CONTACT : SENIOR);
 
-/* ── the address book ─────────────────────────────────────────────────── */
-
 async function seed() {
   const contacts = SEED_CONTACTS.map((c) => ({ ...c, token: newToken() }));
-  // Whoever writes the address book first wins; anyone racing them uses theirs.
   const book = await update('contacts', () => null, (current) =>
     (current ? update.SKIP : update.replace({ contacts }, { contacts })));
   if (!book) return (await read('contacts', null)) || { contacts };
 
-  // To the minute, so two first visits racing each other write the same
-  // keys rather than two copies of every seeded line.
   const now = Math.floor(Date.now() / 60000) * 60000;
   await Promise.all(Object.entries(SEED).flatMap(([slug, lines]) => {
     const writes = lines.map(([from, ago, text]) =>
       putMessage(slug, from, text, now - ago * 60000, 'text', `seed${ago}`));
-    // The seeded "already read" lines sit behind each side's read mark.
     for (const side of SENDERS) {
       const seen = lines.filter(([from, , , wasRead]) => from !== side && wasRead)
         .map(([, ago]) => now - ago * 60000);
@@ -104,10 +78,6 @@ async function book() {
 
 export const publicContact = ({ token, ...rest }) => rest;
 
-/* What the senior has chosen to share with each person. Off unless they
-   turn it on, per person, from that person's link panel:
-     doses - tell them when a Medora dose goes unanswered
-     day   - let them see today's doses and calendar, and add reminders */
 export const PERMISSIONS = ['doses', 'day'];
 const withPermissions = (contact) => ({
   ...contact,
@@ -134,10 +104,7 @@ async function requireContact(slug) {
   return contact;
 }
 
-/* ── messages ─────────────────────────────────────────────────────────── */
-
 function parseKey(key) {
-  // msg/<slug>/<ms>-<from>-<id>
   const [, slug, rest] = key.split('/');
   const [ms, from, id] = rest.split('-');
   return { key, slug, ms: Number(ms), from, id };
@@ -174,13 +141,10 @@ export async function overview(viewer = SENIOR) {
     };
   }));
 
-  // Whoever just wrote goes to the top; someone who never has, to the bottom.
   cards.sort((a, b) => (b.last?.at || '').localeCompare(a.last?.at || ''));
   return cards;
 }
 
-/* One conversation, oldest first. Reading it as one side moves that side's
-   read mark up to the newest message. */
 export async function thread(slug, viewer) {
   const contact = await requireContact(slug);
   const entries = (await keys(`msg/${contact.slug}/`)).map(parseKey).slice(-MAX_SHOWN);
@@ -195,8 +159,6 @@ export async function thread(slug, viewer) {
     await write(`read/${contact.slug}/${viewer}`, newest);
   }
 
-  // "read" means the person it was sent to has seen it - and the viewer has
-  // now seen everything sent to them.
   return entries.map((e, i) => (bodies[i]
     ? { ...bodies[i], read: e.from === viewer ? e.ms <= theirMark : true }
     : null)).filter(Boolean);
@@ -214,13 +176,10 @@ export async function send(slug, sender, text) {
 
   const contact = await requireContact(slug);
   const { ms, ...message } = await putMessage(contact.slug, sender, text);
-  // Writing is reading: whoever sent it has seen everything before it.
   await write(`read/${contact.slug}/${sender}`, ms);
   return { message: { ...message, read: false }, contact: publicContact(contact) };
 }
 
-/* A line about something a caretaker did - "Added a reminder: ..." - shown
-   as a note at both ends, and unread for the senior so they hear about it. */
 export async function logNote(slug, sender, text) {
   const contact = await requireContact(slug);
   const { ms, ...note } = await putMessage(contact.slug, sender, text.trim(), Date.now(), 'note');
@@ -228,21 +187,16 @@ export async function logNote(slug, sender, text) {
   return { ...note, read: false };
 }
 
-/* A line nobody typed - the record a call leaves. `id` makes it idempotent:
-   two ends noticing the same missed call write the same key once. */
 export async function logEvent(slug, sender, text, { read: wasRead = true, at = Date.now(), id } = {}) {
   const contact = await findContact(slug);
   if (!contact) return null;
   const { ms, ...event } = await putMessage(contact.slug, sender, text.trim(), at, 'call', id);
-  // A call the other end answered or declined has been seen by them.
   if (wasRead) {
     const mark = await readMark(contact.slug, other(sender));
     if (ms > mark) await write(`read/${contact.slug}/${other(sender)}`, ms);
   }
   return event;
 }
-
-/* ── changing the address book ────────────────────────────────────────── */
 
 function clean(value, max, what) {
   const text = typeof value === 'string' ? value.replace(/\s+/g, ' ').trim() : '';
@@ -281,7 +235,6 @@ export async function addContact({ name, relation, calls }) {
     if (store.contacts.length >= MAX_CONTACTS) {
       throw new HttpError(400, 'invalid_contact', 'That is as many people as Messages can hold.');
     }
-    // A slug is never reused, so a new person never inherits an old thread.
     const taken = new Set([...store.contacts.map((c) => c.slug), ...(store.retired || [])]);
     const contact = { slug: slugFor(name, taken), name, relation, calls, token: newToken() };
     store.contacts.push(contact);
@@ -313,7 +266,6 @@ export async function setPermissions(slug, changes) {
   });
 }
 
-/* A new token for one contact. The old link stops working at once. */
 export async function rotateToken(slug) {
   return changeBook((store) => {
     const contact = requireIn(store, slug);

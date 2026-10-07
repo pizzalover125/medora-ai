@@ -1,15 +1,3 @@
-/* Telling caretakers when a dose goes unanswered.
-
-   Every five minutes (netlify/functions/dose-check.mjs) this looks for doses
-   whose grace period has run out with nothing recorded - not taken on the
-   dispenser, not taken or skipped in the app - and pushes a notification to
-   each caretaker the senior has allowed to know ("doses" in their link
-   panel). Each missed time is told about once: an `alerted/` key is written
-   before anyone is notified, and old ones are swept away after two days.
-
-   Only the last hour is looked at, so turning this on - or a deploy - never
-   unearths a backlog of old doses. */
-
 import { localMinute } from './clock.mjs';
 import * as medicines from './medicines.mjs';
 import * as messages from './messages.mjs';
@@ -27,7 +15,6 @@ export async function checkMissedDoses() {
   const watchers = (await messages.contacts()).filter((c) => c.permissions.doses);
   const missed = await medicines.missedDoses(WINDOW_MINUTES);
 
-  // Doses due at the same minute are one alert, not one per pill.
   const byMinute = new Map();
   for (const dose of missed) {
     if (!byMinute.has(dose.minute)) byMinute.set(dose.minute, []);
@@ -54,7 +41,6 @@ export async function checkMissedDoses() {
     sent.push({ minute, what, to: watchers.map((c) => c.slug) });
   }
 
-  // Sweep alert markers too old to matter.
   const cutoff = localMinute() - FORGET_AFTER_MINUTES;
   const stale = (await keys('alerted/')).filter((k) => Number(k.split('/')[1]) < cutoff);
   await Promise.all(stale.map((k) => remove(k)));

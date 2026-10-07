@@ -8,8 +8,6 @@ import subprocess
 import sys
 import threading
 
-# `python3` may not be the interpreter the dependencies live in - a bare
-# ImportError here is confusing, so say what to do instead.
 _missing = [m for m in ("flask", "faster_whisper", "requests", "dotenv")
             if importlib.util.find_spec(m) is None]
 if _missing:
@@ -23,15 +21,15 @@ from flask import Flask, jsonify, render_template, request
 
 load_dotenv()
 
-import brain  # noqa: E402  (must follow load_dotenv so env is populated)
-import calls  # noqa: E402
-import events  # noqa: E402
-import intents  # noqa: E402
-import medicines  # noqa: E402
-import messages  # noqa: E402
-import news  # noqa: E402
-import stt  # noqa: E402
-import weather  # noqa: E402
+import brain
+import calls
+import events
+import intents
+import medicines
+import messages
+import news
+import stt
+import weather
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger("medora")
@@ -40,19 +38,10 @@ MAX_AUDIO_BYTES = 25 * 1024 * 1024
 HOST = os.getenv("HOST", "127.0.0.1")
 PORT = int(os.getenv("PORT", "5001"))
 
-# HOST=0.0.0.0 (./run.sh --lan) puts the contact pages on the wifi, so the
-# family can write from their own phones. The Werkzeug debugger is a remote
-# shell, so it does not go onto the network with them.
 ON_WIFI = HOST not in ("127.0.0.1", "localhost", "::1")
 TUNNELED = os.getenv("TUNNEL", "") == "1"
 DEBUG = os.getenv("FLASK_DEBUG", "1") == "1" and not ON_WIFI and not TUNNELED
 
-# A browser opens a camera only on a secure page, and on a phone that means
-# https. SSL=1 (./run.sh --https) serves one with a certificate this machine
-# signs itself - which both ends have to accept once. TUNNEL=1 (./run.sh
-# --tunnel) leaves that to cloudflared, which fronts this with a certificate
-# phones already trust - and which also means this is reachable from outside
-# the house, so the debugger stays off there too.
 HTTPS = os.getenv("SSL", "") in ("1", "on", "true")
 CERT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "certs")
 CERT = os.path.join(CERT_DIR, "ask-cert.pem")
@@ -61,11 +50,9 @@ CERT_KEY = os.path.join(CERT_DIR, "ask-key.pem")
 app = Flask(__name__)
 app.config["MAX_CONTENT_LENGTH"] = MAX_AUDIO_BYTES
 
-
 @app.route("/")
 def index():
     return render_template("index.html")
-
 
 @app.route("/api/health")
 def health():
@@ -76,7 +63,6 @@ def health():
         has_key=bool(os.getenv("HACKCLUB_API_KEY")),
     )
 
-
 @app.route("/api/weather")
 def weather_now():
     """The same forecast the voice command opens, for a page reload."""
@@ -86,11 +72,9 @@ def weather_now():
         log.error("weather failed: %s", exc)
         return jsonify(error="weather"), 502
 
-
 def _event_error(exc, status):
     return jsonify(error="invalid_event" if status == 400 else "event_not_found",
                    message=str(exc)), status
-
 
 @app.route("/api/events", methods=["GET", "POST"])
 def calendar_events():
@@ -106,7 +90,6 @@ def calendar_events():
     except events.EventValidationError as exc:
         return _event_error(exc, 400)
     return jsonify(event=event, events=events.list_all()), 201
-
 
 @app.route("/api/events/<event_id>", methods=["PATCH", "DELETE"])
 def calendar_event(event_id):
@@ -125,11 +108,9 @@ def calendar_event(event_id):
         return _event_error(exc, 404)
     return jsonify(event=event, events=events.list_all())
 
-
 def _medicine_error(exc, status):
     return jsonify(error="invalid_medicine" if status == 400 else "medicine_not_found",
                    message=str(exc)), status
-
 
 @app.route("/api/medicines", methods=["GET", "POST"])
 def medicine_schedule():
@@ -150,13 +131,11 @@ def medicine_schedule():
         return _medicine_error(exc, 400)
     return jsonify(medicine=medicine, **medicines.snapshot()), 201
 
-
 @app.route("/api/medicines/due")
 def medicines_due():
     """Doses that came due in the last few minutes and are still waiting -
     what the assistant speaks a reminder for."""
     return jsonify(due=medicines.due_now())
-
 
 @app.route("/api/medicines/<medicine_id>", methods=["DELETE"])
 def medicine_entry(medicine_id):
@@ -166,7 +145,6 @@ def medicine_entry(medicine_id):
     except medicines.MedicineNotFoundError as exc:
         return _medicine_error(exc, 404)
     return jsonify(medicine=removed, **medicines.snapshot())
-
 
 @app.route("/api/doses", methods=["POST"])
 def medicine_doses():
@@ -186,7 +164,6 @@ def medicine_doses():
         return jsonify(error="invalid_dose", message=str(exc)), 400
     return jsonify(dose=dose, **medicines.snapshot()), 201
 
-
 @app.route("/api/news")
 def news_stories():
     """The latest headlines, and what the senior is following."""
@@ -205,7 +182,6 @@ def news_stories():
     return jsonify(stories=found, categories=news.catalogue(),
                    selected=news.selected(), category=category)
 
-
 @app.route("/api/news/settings", methods=["POST"])
 def news_settings():
     """Replace the sections being followed."""
@@ -220,11 +196,9 @@ def news_settings():
 
     return jsonify(categories=news.catalogue(), selected=news.selected())
 
-
 def _message_error(exc, status):
     return jsonify(error="invalid_message" if status == 400 else "contact_not_found",
                    message=str(exc)), status
-
 
 @app.route("/<contact_slug>")
 def contact_page(contact_slug):
@@ -235,12 +209,10 @@ def contact_page(contact_slug):
         return f"No contact page by that name. Try: {known}", 404
     return render_template("contact.html", contact=contact, contacts=messages.CONTACTS)
 
-
 @app.route("/api/contacts")
 def message_contacts():
     """Every contact with its last message, for the list and the dock badge."""
     return jsonify(contacts=messages.overview())
-
 
 @app.route("/api/messages/<contact_slug>", methods=["GET", "POST"])
 def message_thread(contact_slug):
@@ -265,23 +237,18 @@ def message_thread(contact_slug):
     except messages.ContactNotFoundError as exc:
         return _message_error(exc, 404)
 
-    # Read it back as whoever just wrote - they have plainly seen their own
-    # conversation, and the other end's unread count is not theirs to clear.
     return jsonify(message=message,
                    messages=messages.thread(contact_slug, message["from"])), 201
-
 
 def _viewer(value):
     """The end of a conversation a request speaks for, or None."""
     viewer = (value or messages.SENIOR).strip().lower()
     return viewer if viewer in messages.SENDERS else None
 
-
 @app.route("/api/ice")
 def ice_servers():
     """Where a browser should look for the other end of a call."""
     return jsonify(iceServers=calls.ice_servers())
-
 
 @app.route("/api/calls", methods=["GET", "POST"])
 def video_calls():
@@ -344,7 +311,6 @@ def video_calls():
 
     return jsonify(call=call)
 
-
 def _news_reply(kind, category, question):
     """One spoken answer about the news, and where the window should land."""
     def reply(speak, **extra):
@@ -373,7 +339,6 @@ def _news_reply(kind, category, question):
         return reply(news.headlines_line(found[:news.HEADLINE_COUNT], read_category),
                      category=read_category)
 
-    # headlines, a section, opening the window, or a forced refresh
     try:
         found = news.stories([category] if category else None,
                              force=(kind == "refresh"))
@@ -389,7 +354,6 @@ def _news_reply(kind, category, question):
     if kind == "open":
         return reply("Here's the news.", category=category)
     return reply(news.headlines_line(top, category), category=category)
-
 
 @app.route("/api/ask", methods=["POST"])
 def ask():
@@ -411,7 +375,6 @@ def ask():
 
     log.info("heard: %r (peak=%.4f over %.2fs)", heard.text, heard.peak, heard.seconds)
 
-    # A dead microphone and a silent room need different advice.
     if heard.peak < stt.SILENCE_PEAK:
         return jsonify(
             error="no_signal",
@@ -422,7 +385,6 @@ def ask():
 
     question = heard.text
 
-    # "Play Simon" is ours to handle - don't spend a model call on it.
     game = intents.match_game(question)
     if game:
         key, label = game
@@ -430,7 +392,6 @@ def ask():
         return jsonify(action="game", game=key, question=question,
                        speak=f"Opening {label}.")
 
-    # So is the forecast - a lookup the model would only slow down.
     if intents.match_weather(question):
         log.info("opening weather")
         try:
@@ -443,14 +404,10 @@ def ask():
         return jsonify(action="weather", weather=report, question=question,
                        speak=report["speak"])
 
-    # Medora's schedule is ours too - a lookup in a local file, and the
-    # window is the answer as much as the spoken line is.
     medora = intents.match_medora(question)
     if medora:
         log.info("medora: %s", medora)
 
-        # The dispenser is on the other end of the browser's Bluetooth link,
-        # so the front end runs the test; all this can do is ask for it.
         if medora == "test":
             return jsonify(action="medora-test", question=question,
                            speak="Testing Medora now.")
@@ -460,13 +417,9 @@ def ask():
         return jsonify(action="medora", medora=medicines.snapshot(),
                        question=question, speak=speak)
 
-    # The news is ours as well: reading a few RSS feeds, not a question.
     heard_news = intents.match_news(question)
     if heard_news:
         kind, category = heard_news
-        # "tell me more", "next story" and "say that again" only belong to
-        # the news while something is actually being read out. On their own
-        # they follow whatever was last said, which is the model's business.
         if kind in ("more", "next", "repeat") and not news.reading_active():
             heard_news = None
         else:
@@ -486,7 +439,6 @@ def ask():
     log.info("said: %r%s", reply, " (searched)" if searched else "")
     return jsonify(question=question, speak=reply, searched=searched)
 
-
 def _warm_up():
     """Load Whisper in the background so the first question isn't slow."""
     try:
@@ -494,20 +446,16 @@ def _warm_up():
     except Exception:
         log.exception("could not preload whisper model")
 
-
 def _lan_ip():
     """This machine's address on the local network, or None if it has none."""
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     try:
-        # Nothing is sent - this only asks the routing table which interface
-        # would carry a packet out, which is the address a phone can reach.
         sock.connect(("8.8.8.8", 80))
         return sock.getsockname()[0]
     except OSError:
         return None
     finally:
         sock.close()
-
 
 def _certificate(ip):
     """Return (cert, key) for a self-signed certificate covering this machine.
@@ -541,7 +489,6 @@ def _certificate(ip):
              ip or "this machine")
     return CERT, CERT_KEY
 
-
 def _certificate_covers(ip):
     """True if the certificate on disk is still good for this address."""
     if not (os.path.exists(CERT) and os.path.exists(CERT_KEY)):
@@ -553,7 +500,6 @@ def _certificate_covers(ip):
     except (OSError, subprocess.CalledProcessError):
         return False
     return not ip or ip == "127.0.0.1" or f"IP Address:{ip}" in out
-
 
 def _banner(scheme):
     """Print the addresses to open, including the one to type on a phone."""
@@ -586,10 +532,7 @@ def _banner(scheme):
                  "a camera, and a browser only opens one on a secure page - "
                  "restart with ./run.sh --lan --https for that.")
 
-
 if __name__ == "__main__":
-    # With the reloader on, only the child process should load the model -
-    # otherwise it is held in memory twice.
     ssl_context = None
     if HTTPS:
         try:

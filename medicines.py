@@ -25,21 +25,14 @@ log = logging.getLogger(__name__)
 STORE_PATH = os.path.join(os.path.dirname(__file__), "medicines.json")
 _lock = threading.Lock()
 
-# One container per medicine, and the dispenser has five.
 CONTAINERS = (1, 2, 3, 4, 5)
 MAX_TIMES = 3
 MAX_QUANTITY = 10
 
-# How late a dose may still be answered. The device uses the same five
-# minutes before it gives up on an alarm.
 GRACE_MINUTES = 5
 
-# Far enough ahead to find the next few doses of a medicine taken once a
-# week; short enough that the search stays trivial.
 SEARCH_DAYS = 62
 
-# Answered doses are kept for a month - long enough for the device to be
-# told about anything it missed, short enough that the file stays small.
 HISTORY_DAYS = 30
 
 DAY_NAMES = ("Sunday", "Monday", "Tuesday", "Wednesday", "Thursday",
@@ -48,10 +41,6 @@ DAY_NAMES = ("Sunday", "Monday", "Tuesday", "Wednesday", "Thursday",
 _TIME_RE = re.compile(r"^([01]\d|2[0-3]):([0-5]\d)$")
 _EPOCH = datetime.datetime(1970, 1, 1)
 
-# The voice may read this schedule and it may test the dispenser, but it may
-# not change what is in it. A misheard medicine name is not a typo here, so
-# adding, removing and answering doses stay with the app and the dispenser's
-# own two buttons.
 TOOLS = [
     {
         "type": "function",
@@ -82,37 +71,21 @@ TOOLS = [
 
 NAMES = {t["function"]["name"] for t in TOOLS}
 
-
 class MedicineValidationError(ValueError):
     """The requested medicine data is incomplete or malformed."""
 
-
 class MedicineNotFoundError(LookupError):
     """No stored medicine has the requested id."""
-
-
-# ── time ────────────────────────────────────────────────────────────────
-#
-# Both ends count in local wall-clock minutes since 1970, which is what
-# `Math.floor((date.getTime() - date.getTimezoneOffset() * 60000) / 60000)`
-# produces in the browser and what the device stores.
-
 
 def local_minute(moment=None):
     moment = moment or datetime.datetime.now()
     return int((moment - _EPOCH).total_seconds() // 60)
 
-
 def minute_to_datetime(minute):
     return _EPOCH + datetime.timedelta(minutes=int(minute))
 
-
-# ── the file ────────────────────────────────────────────────────────────
-
-
 def _blank():
     return {"medicines": [], "doses": []}
-
 
 def _load():
     try:
@@ -132,46 +105,33 @@ def _load():
         "doses": stored.get("doses") or [],
     }
 
-
 def _save(store):
-    # Write to a temp file and rename over the original so a crash
-    # mid-write never leaves medicines.json half-written.
     tmp = STORE_PATH + ".tmp"
     with open(tmp, "w", encoding="utf-8") as f:
         json.dump(store, f, indent=2)
     os.replace(tmp, STORE_PATH)
-
 
 def _prune(store):
     cutoff = local_minute() - HISTORY_DAYS * 24 * 60
     store["doses"] = [d for d in store["doses"] if d["minute"] >= cutoff]
     return store
 
-
 def _find(store, medicine_id):
     return next((m for m in store["medicines"] if m["id"] == medicine_id), None)
-
 
 def _dose_key(container, minute):
     return f"{container}:{minute}"
 
-
 def _resolved(store):
     return {_dose_key(d["container"], d["minute"]): d for d in store["doses"]}
 
-
-# ── reading ─────────────────────────────────────────────────────────────
-
-
 def _sort_key(medicine):
     return (medicine["container"], medicine["name"].lower())
-
 
 def list_all():
     """Every medicine, in container order, for the app and the API."""
     with _lock:
         return sorted((dict(m) for m in _load()["medicines"]), key=_sort_key)
-
 
 def snapshot():
     """Everything the app needs in one request: schedule, answered doses,
@@ -184,7 +144,6 @@ def snapshot():
 
     return {"medicines": medicines, "doses": doses, "upcoming": upcoming}
 
-
 def _occurrences(store, days_ahead=SEARCH_DAYS):
     """Every scheduled dose from the start of today onwards, in order."""
     now = datetime.datetime.now()
@@ -194,8 +153,6 @@ def _occurrences(store, days_ahead=SEARCH_DAYS):
     for medicine in store["medicines"]:
         for offset in range(days_ahead):
             day = start + datetime.timedelta(days=offset)
-            # Python counts Monday as 0; the schedule counts Sunday as 0,
-            # the way JavaScript's getDay() does.
             if ((day.weekday() + 1) % 7) not in medicine["days"]:
                 continue
 
@@ -216,7 +173,6 @@ def _occurrences(store, days_ahead=SEARCH_DAYS):
     found.sort(key=lambda dose: (dose["minute"], dose["name"].lower()))
     return found
 
-
 def _unanswered(store, days_ahead=SEARCH_DAYS):
     """Doses still waiting for an answer: everything ahead, plus anything
     that came due in the last few minutes and was never answered."""
@@ -229,20 +185,16 @@ def _unanswered(store, days_ahead=SEARCH_DAYS):
         and _dose_key(dose["container"], dose["minute"]) not in resolved
     ]
 
-
 def _public(dose):
     return {key: value for key, value in dose.items() if key != "at"}
 
-
 def _upcoming(store, limit=3):
     return [_public(dose) for dose in _unanswered(store)[:limit]]
-
 
 def upcoming(limit=3):
     """The next few doses still waiting for an answer."""
     with _lock:
         return _upcoming(_load(), limit)
-
 
 def due_now(grace_minutes=GRACE_MINUTES):
     """Doses that came due within the grace period and have not been
@@ -254,13 +206,8 @@ def due_now(grace_minutes=GRACE_MINUTES):
     return [_public(dose) for dose in pending
             if now - grace_minutes <= dose["minute"] <= now]
 
-
-# ── writing ─────────────────────────────────────────────────────────────
-
-
 def _text(value):
     return value.strip() if isinstance(value, str) else ""
-
 
 def _clean_times(values):
     if isinstance(values, str):
@@ -283,7 +230,6 @@ def _clean_times(values):
             f"Medora can hold up to {MAX_TIMES} doses a day for one medicine.")
 
     return sorted(times)
-
 
 def _clean_days(values):
     if values is None:
@@ -310,7 +256,6 @@ def _clean_days(values):
         raise MedicineValidationError("Please choose at least one day.")
     return sorted(days)
 
-
 def _clean_quantity(value):
     if value in (None, ""):
         return 1
@@ -323,7 +268,6 @@ def _clean_quantity(value):
         raise MedicineValidationError(
             f"A dose can be from 1 to {MAX_QUANTITY} at a time.")
     return quantity
-
 
 def _clean_container(value, taken):
     free = [c for c in CONTAINERS if c not in taken]
@@ -344,7 +288,6 @@ def _clean_container(value, taken):
     if container in taken:
         raise MedicineValidationError(f"Container {container} is already in use.")
     return container
-
 
 def create_medicine(name, times, days=None, quantity=None, container=None):
     """Add a medicine and return a detached copy of it."""
@@ -376,7 +319,6 @@ def create_medicine(name, times, days=None, quantity=None, container=None):
              medicine["id"], name, medicine["container"], ", ".join(times))
     return dict(medicine)
 
-
 def delete_medicine(medicine_id):
     """Remove a medicine and return the one that was removed."""
     medicine_id = _text(medicine_id)
@@ -391,7 +333,6 @@ def delete_medicine(medicine_id):
 
     log.info("removed medicine %s: %r", medicine_id, medicine["name"])
     return dict(medicine)
-
 
 def record_dose_result(container, minute, status):
     """Write down one answered dose, identified the way the device does.
@@ -423,15 +364,10 @@ def record_dose_result(container, minute, status):
              minute_to_datetime(minute).strftime("%Y-%m-%d %H:%M"))
     return dict(dose)
 
-
-# ── saying it out loud ──────────────────────────────────────────────────
-
-
 def _spoken_time(at):
     minute = at.strftime(":%M") if at.minute else ""
     hour = at.hour % 12 or 12
     return f"{hour}{minute} {'AM' if at.hour < 12 else 'PM'}"
-
 
 def _spoken_day(at):
     today = datetime.date.today()
@@ -444,18 +380,15 @@ def _spoken_day(at):
         return f"on {DAY_NAMES[(at.weekday() + 1) % 7]}"
     return f"on {at.strftime('%B')} {at.day}"
 
-
 def _spoken_dose(dose):
     quantity = dose["quantity"]
     return (f"{quantity} {dose['name']}" if quantity > 1
             else f"your {dose['name']}")
 
-
 def _spoken_list(parts):
     if len(parts) == 1:
         return parts[0]
     return ", ".join(parts[:-1]) + f" and {parts[-1]}"
-
 
 def next_dose_line():
     """One spoken sentence about what is next - the reply to the voice
@@ -482,13 +415,10 @@ def next_dose_line():
     return (f"Your next dose is {what}, "
             f"{_spoken_day(first['at'])} at {_spoken_time(first['at'])}.")
 
-
 _COUNT_WORDS = {1: "one", 2: "two", 3: "three", 4: "four", 5: "five"}
-
 
 def _sentence(text):
     return text[:1].upper() + text[1:]
-
 
 def upcoming_doses_line(limit=3):
     """The next few doses, read out - the answer to "read my upcoming doses".
@@ -519,10 +449,6 @@ def upcoming_doses_line(limit=3):
     count = _COUNT_WORDS.get(len(parts), str(len(parts)))
     return " ".join([f"You have {count} doses coming up.", *parts])
 
-
-# ── the model's view ────────────────────────────────────────────────────
-
-
 def _describe_schedule(medicine):
     times = ", ".join(_spoken_time(datetime.datetime(2000, 1, 1,
                                                      *(int(p) for p in value.split(":"))))
@@ -530,7 +456,6 @@ def _describe_schedule(medicine):
     days = ("every day" if len(medicine["days"]) == 7
             else ", ".join(DAY_NAMES[day] for day in medicine["days"]))
     return f"{medicine['quantity']} at {times}, {days}"
-
 
 def call(name: str, args: dict) -> str:
     """Run one medicine tool call. Returns plain text for the model."""
@@ -540,7 +465,6 @@ def call(name: str, args: dict) -> str:
     }.get(name)
     return handler(args) if handler else "Unknown medicine action."
 
-
 def _list(_args: dict) -> str:
     medicines = list_all()
     if not medicines:
@@ -549,7 +473,6 @@ def _list(_args: dict) -> str:
     lines = [f"id {m['id']}: {m['name']}, container {m['container']}, "
              f"{_describe_schedule(m)}" for m in medicines]
     return "\n".join(lines)
-
 
 def _next(_args: dict) -> str:
     with _lock:

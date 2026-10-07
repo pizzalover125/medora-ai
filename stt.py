@@ -22,15 +22,10 @@ log = logging.getLogger(__name__)
 
 MODEL_SIZE = os.getenv("WHISPER_MODEL", "small.en")
 COMPUTE_TYPE = os.getenv("WHISPER_COMPUTE", "int8")
-# Set DEBUG_AUDIO=1 to dump every received clip to ./debug_audio for inspection.
 DEBUG_AUDIO = os.getenv("DEBUG_AUDIO", "0") == "1"
 
-# Below this peak the microphone is not delivering usable audio at all, which
-# is a different problem from the user simply not speaking.
 SILENCE_PEAK = 0.005
 
-# Whisper reliably invents these out of non-speech noise. Answering them would
-# mean replying to a question nobody asked.
 _HALLUCINATIONS = {
     "you", "thank you", "thanks for watching", "thank you for watching",
     "bye", "bye.", "okay", "ok", "so", "uh", "um", "hmm", "mm",
@@ -40,7 +35,6 @@ _HALLUCINATIONS = {
 
 Heard = collections.namedtuple("Heard", "text peak seconds")
 
-
 def _is_hallucination(text: str) -> bool:
     """True if the transcript is one of Whisper's stock non-speech outputs."""
     bare = re.sub(r"[^a-z0-9.\s]", "", text.lower()).strip().rstrip(".")
@@ -48,7 +42,6 @@ def _is_hallucination(text: str) -> bool:
 
 _model = None
 _model_lock = threading.Lock()
-
 
 def load_model():
     """Return the shared WhisperModel, downloading/initialising it on first use."""
@@ -65,7 +58,6 @@ def load_model():
                 )
                 log.info("whisper model ready")
     return _model
-
 
 def _probe(audio_bytes: bytes) -> str:
     """Describe what the container actually holds, for the log."""
@@ -84,7 +76,6 @@ def _probe(audio_bytes: bytes) -> str:
     except Exception as exc:
         return f"unreadable container: {exc!r}"
 
-
 def transcribe(audio_bytes: bytes) -> Heard:
     """Transcribe recorded audio (webm/opus, mp4/aac, wav...) into plain text."""
     model = load_model()
@@ -97,8 +88,6 @@ def transcribe(audio_bytes: bytes) -> Heard:
         dump.write_bytes(audio_bytes)
         log.info("clip saved to %s", dump)
 
-    # Decode ourselves so the PCM can be measured; a silent or zero-length
-    # decode is the difference between "you said nothing" and "we broke it".
     try:
         pcm = decode_audio(io.BytesIO(audio_bytes), sampling_rate=16000)
     except Exception:
@@ -121,11 +110,7 @@ def transcribe(audio_bytes: bytes) -> Heard:
         pcm,
         beam_size=5,
         language="en" if MODEL_SIZE.endswith(".en") else None,
-        # Older voices often trail off or pause mid-sentence; the VAD trims the
-        # dead air so Whisper doesn't hallucinate filler into it.
         vad_filter=True,
-        # Silero's default threshold (0.5) drops quiet, breathy or unevenly
-        # paced speech - exactly how an older person often sounds.
         vad_parameters={"min_silence_duration_ms": 400, "threshold": 0.25},
         condition_on_previous_text=False,
     )
@@ -137,8 +122,6 @@ def transcribe(audio_bytes: bytes) -> Heard:
 
     text = " ".join(s.text.strip() for s in segments).strip()
 
-    # The VAD is the most likely thing to have eaten a quiet voice, so if it
-    # left nothing, try once more without it before giving up.
     if not text and peak >= SILENCE_PEAK:
         log.warning("nothing survived the VAD - retrying without it")
         segments, info = model.transcribe(

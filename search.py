@@ -13,8 +13,6 @@ RESULTS = int(os.getenv("EXA_RESULTS", "4"))
 SNIPPET = int(os.getenv("EXA_SNIPPET", "800"))
 TIMEOUT = 25
 
-# What the model sees. The description is the whole of how it decides, so it
-# says plainly what is worth a search and what is not.
 TOOL = {
     "type": "function",
     "function": {
@@ -40,7 +38,6 @@ TOOL = {
         },
     },
 }
-
 
 def _one(query: str) -> str:
     """Run a single search and render it as plain text for the model."""
@@ -85,11 +82,9 @@ def _one(query: str) -> str:
     log.info("exa %r -> %d result(s)", query, len(results))
     return "\n\n".join(lines)
 
-
 def run(queries):
     """Run several searches at once. Returns a list of rendered results."""
     if len(queries) == 1:
         return [_one(queries[0])]
-    # The person is waiting, so the searches overlap rather than queue.
     with concurrent.futures.ThreadPoolExecutor(max_workers=len(queries)) as pool:
         return list(pool.map(_one, queries))

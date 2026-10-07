@@ -1,18 +1,6 @@
-/* ---------------------------------------------------------------------------
-   The forecast, in the same draggable window as the games.
-
-   window.Weather.open(report)   report as sent by /api/ask or /api/weather
-   window.Weather.open()         fetches it first
-
-   Today sits at the top, the six days after it below. The speaking is done by
-   app.js, which reads today's line only - a whole week read aloud is a lot to
-   hold in your head, and the point of the window is that you don't have to.
---------------------------------------------------------------------------- */
-
 window.Weather = (() => {
   'use strict';
 
-  /* Line drawings in currentColor - the page has no colour to spare. */
   const ICONS = {
     sun: '<circle cx="12" cy="12" r="4.6"/><path d="M12 2v2.4M12 19.6V22M2 12h2.4' +
          'M19.6 12H22M4.9 4.9l1.7 1.7M17.4 17.4l1.7 1.7M19.1 4.9l-1.7 1.7' +
@@ -57,8 +45,6 @@ window.Weather = (() => {
     return node;
   };
 
-  /* ── the window ─────────────────────────────────────────────────────── */
-
   function build(body, data) {
     const days = data.days || [];
     const today = days[0];
@@ -66,7 +52,6 @@ window.Weather = (() => {
 
     body.classList.add('wx');
 
-    /* Today, large. */
     const head = el('div', 'wx__now');
     const mark = el('div', 'wx__mark');
     mark.appendChild(icon(data.now.icon, 54));
@@ -88,7 +73,6 @@ window.Weather = (() => {
     head.appendChild(range);
     body.appendChild(head);
 
-    /* Today's detail, as three plain readings. */
     const facts = el('div', 'wx__facts');
     [
       ['Rain', today.rain + '%'],
@@ -101,8 +85,6 @@ window.Weather = (() => {
     });
     body.appendChild(facts);
 
-    /* The week. The bar under each row is the day's range against the week's,
-       so a cold snap is visible without reading a single number. */
     const highs = days.map(d => d.high);
     const lows = days.map(d => d.low);
     const top = Math.max(...highs);

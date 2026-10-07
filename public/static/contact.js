@@ -1,25 +1,8 @@
-/* ---------------------------------------------------------------------------
-   A caretaker's link: /c/<token>.
-
-   The senior shares this link from their Messages window, and it is the
-   caretaker's whole way in - no account, no password. It opens one
-   conversation with the senior, and from it they can text or video call at
-   any time. Turning on notifications (once per phone) means the senior's
-   replies and calls reach them with this page closed, too.
-
-   If the senior has shared their day, a Today tab shows the medicines due
-   today and how each went, what is coming up on their calendar, and a form
-   to add a reminder - which the assistant says out loud when it comes due.
-
-   If the senior replaces the link, the old one stops working and this page
-   says so.
---------------------------------------------------------------------------- */
-
 (() => {
   'use strict';
 
-  const POLL_MS = 4000;            // open and on screen, notifications off
-  const QUIET_POLL_MS = 20000;     // a push will say when something arrives
+  const POLL_MS = 4000;
+  const QUIET_POLL_MS = 20000;
 
   const token = decodeURIComponent(location.pathname.split('/')[2] || '');
   const log = document.getElementById('log');
@@ -72,7 +55,7 @@
   async function requestJSON(url, options = {}) {
     const response = await fetch(url, {cache: 'no-store', ...options});
     let data = {};
-    try { data = await response.json(); } catch (_) { /* handled below */ }
+    try { data = await response.json(); } catch (_) {  }
     if (!response.ok) {
       const error = new Error(data.message || 'Messages are not answering.');
       error.code = data.error;
@@ -88,7 +71,6 @@
     return row;
   }
 
-  /* This page is the caretaker, so their own messages are on the right. */
   function bubble(message) {
     if (message.kind && message.kind !== 'text') return note(message);
     const row = el('div', `chat-row ${message.from === 'contact' ? 'is-me' : 'is-them'}`);
@@ -121,8 +103,6 @@
 
   const url = `/api/c/${encodeURIComponent(token)}/messages`;
 
-  /* The link was replaced or the contact removed: say so plainly, and stop
-     asking the server about it. */
   function closed(message) {
     clearTimeout(timer);
     document.title = 'Link expired';
@@ -189,8 +169,6 @@
     }
   });
 
-  /* ── notifications ────────────────────────────────────────────────────── */
-
   async function showAlerts() {
     const state = await Push.status();
     pushOn = state === 'on';
@@ -223,14 +201,11 @@
     }
   });
 
-  // A push while the page is open: look now rather than at the next poll.
   Push.on((payload) => {
     refresh();
     VideoCall.check();
     if (payload.kind === 'dose' && tab === 'today') loadToday();
   });
-
-  /* ── today: what the senior has shared ────────────────────────────────── */
 
   const STATUS = {
     taken: ['Taken', 'is-good'],
@@ -269,7 +244,6 @@
     if (today) {
       loadToday();
       todayTimer = setInterval(() => {
-        // Not while they are typing a reminder - a redraw would take the caret.
         if (document.visibilityState === 'visible' && !todayPanel.contains(document.activeElement)) {
           loadToday();
         }
@@ -284,7 +258,6 @@
     if (button) showTab(button.dataset.tab);
   });
 
-  /* Shown or hidden as the senior changes what they share. */
   function applyPermissions() {
     const day = !!(contact.permissions && contact.permissions.day);
     tabs.hidden = !day;
@@ -321,7 +294,6 @@
     const draft = keepForm ? Object.fromEntries(new FormData(keepForm)) : null;
     todayPanel.textContent = '';
 
-    // Medicines
     const meds = el('section', 'care-card');
     meds.appendChild(el('h2', 'care-card__title', 'Medicines today'));
     if (!data.doses.length) {
@@ -342,7 +314,6 @@
     }
     todayPanel.appendChild(meds);
 
-    // Calendar
     const cal = el('section', 'care-card');
     cal.appendChild(el('h2', 'care-card__title', 'Coming up'));
     if (!data.events.length) {
@@ -364,7 +335,6 @@
     }
     todayPanel.appendChild(cal);
 
-    // Add a reminder
     const add = el('section', 'care-card');
     add.appendChild(el('h2', 'care-card__title', 'Add a reminder'));
     add.appendChild(el('p', 'care-card__empty',
@@ -427,8 +397,6 @@
     });
   }
 
-  /* ── start ────────────────────────────────────────────────────────────── */
-
   async function start() {
     try {
       const data = await requestJSON(`/api/c/${encodeURIComponent(token)}`);
@@ -449,7 +417,6 @@
     callButton.setAttribute('aria-label', `Start a video call with ${name}`);
     input.disabled = send.disabled = callButton.disabled = false;
 
-    // An installable app that opens straight on this link.
     const manifest = document.createElement('link');
     manifest.rel = 'manifest';
     manifest.href = `/api/manifest/${encodeURIComponent(token)}`;
@@ -464,8 +431,6 @@
     schedule();
   }
 
-  /* Coming back to the page: catch up, including anything the senior has
-     started or stopped sharing meanwhile. */
   document.addEventListener('visibilitychange', async () => {
     if (document.visibilityState !== 'visible' || !contact) return;
     refresh();

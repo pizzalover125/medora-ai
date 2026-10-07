@@ -1,9 +1,3 @@
-/* ---------------------------------------------------------------------------
-   A quiet app dock. It stays at the right edge and leaves the assistant in
-   the middle of the room. Tooltips supply labels without adding permanent
-   visual noise.
---------------------------------------------------------------------------- */
-
 .app-dock {
   position: fixed;
   top: 50%;
@@ -112,8 +106,6 @@
   background: rgb(var(--line) / .11);
 }
 
-/* ── game launcher ─────────────────────────────────────────────────────── */
-
 .win__body.game-picker,
 .win__body.calendar {
   justify-items: stretch;
@@ -205,8 +197,6 @@
 
 .game-picker__name { display: block; font-size: 15px; font-weight: 620; }
 .game-picker__desc { display: block; margin-top: 2px; font-size: 11px; opacity: .4; }
-
-/* ── calendar ──────────────────────────────────────────────────────────── */
 
 .calendar__today {
   display: flex;
@@ -381,8 +371,6 @@
   opacity: .34;
 }
 
-/* ── calendar form ─────────────────────────────────────────────────────── */
-
 .calendar-form {
   min-height: 0;
   flex: 1 1 auto;
@@ -532,7 +520,6 @@
   .app-dock__item svg { width: 20px; height: 20px; }
   .app-dock__item::after { display: none; }
 
-  /* Keep app windows usable without letting them sit underneath the dock. */
   .win {
     left: calc(50% - 31px);
     width: min(calc(100vw - 82px), 420px);

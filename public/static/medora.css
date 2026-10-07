@@ -1,14 +1,3 @@
-/* ---------------------------------------------------------------------------
-   Medora, in homeroom's clothes.
-
-   Greyscale only, 4px corners, lowercase chrome, bold numerals, and structure
-   drawn with hairline rules rather than shadows. Every row is a light chip
-   that truncates rather than wraps, so a long medicine name cannot push the
-   layout around.
---------------------------------------------------------------------------- */
-
-/* The palette and the buttons come from hr.css; this is Medora's own
-   layout on top of them. */
 .win:has(> .win__body.medora) {
   width: min(94vw, 460px);
 }
@@ -22,8 +11,6 @@
   padding: 0;
   overflow: hidden;
 }
-
-/* ── head ──────────────────────────────────────────────────────────────── */
 
 .medora__head {
   flex: none;
@@ -87,8 +74,6 @@
   50% { opacity: 1; }
 }
 
-/* ── tabs ──────────────────────────────────────────────────────────────── */
-
 .medora__tabs {
   flex: none;
   display: grid;
@@ -125,8 +110,6 @@
   outline: 2px solid var(--hr-fg);
   outline-offset: 1px;
 }
-
-/* ── body and foot ─────────────────────────────────────────────────────── */
 
 .medora__body {
   flex: 1 1 auto;
@@ -200,8 +183,6 @@
   text-transform: lowercase;
 }
 
-/* ── a row ─────────────────────────────────────────────────────────────── */
-
 .medora-row {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
@@ -217,8 +198,6 @@
 
 .medora-row:hover { background: var(--hr-muted); }
 
-/* A dose that is due is the one thing that shouts, and it does it in ink
-   rather than colour. */
 .medora-row.is-due {
   color: var(--hr-card);
   background: var(--hr-fg);
@@ -253,7 +232,6 @@
   text-transform: lowercase;
 }
 
-/* The container a medicine sits in - just the number, so nothing clips. */
 .medora-row__slot {
   width: 28px;
   height: 28px;
@@ -308,7 +286,6 @@
 
 .medora-row__actions { display: flex; gap: 6px; }
 
-/* On an inverted row the buttons invert with it. */
 .medora-row.is-due .hr-btn--solid {
   color: var(--hr-fg);
   background: var(--hr-card);
@@ -322,8 +299,6 @@
 .medora-row.is-due .hr-btn--outline:hover:not(:disabled) {
   background: color-mix(in srgb, var(--hr-card) 15%, transparent);
 }
-
-/* ── the form ──────────────────────────────────────────────────────────── */
 
 .medora-form { display: grid; gap: 12px; }
 
@@ -342,7 +317,6 @@
   gap: 10px;
 }
 
-/* .win input is centred, uppercase and 20px for the games. */
 .win .medora-form input,
 .win .medora-form select {
   width: 100%;
@@ -418,8 +392,6 @@
   text-transform: lowercase;
 }
 
-/* ── the dispenser ─────────────────────────────────────────────────────── */
-
 .medora-pair {
   display: grid;
   justify-items: center;
@@ -453,8 +425,6 @@
   font-size: 11px;
   word-break: break-all;
 }
-
-/* ── the checks ────────────────────────────────────────────────────────── */
 
 .medora-test {
   display: grid;
@@ -523,8 +493,6 @@
   border-color: var(--hr-fg);
   font-weight: 600;
 }
-
-/* ── motion ────────────────────────────────────────────────────────────── */
 
 @keyframes medora-fade-up {
   from { opacity: 0; transform: translateY(8px); }

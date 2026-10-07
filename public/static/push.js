@@ -1,17 +1,3 @@
-/* ---------------------------------------------------------------------------
-   Notifications, shared by the senior's assistant and the caretaker's page.
-
-   Push.status()           'unsupported' | 'needs-install' | 'blocked' | 'off' | 'on'
-   Push.enable(token?)     ask permission (needs a tap) and register this device
-   Push.on(fn)             fn({kind, slug, ...}) when a push lands while open
-
-   A push wakes the browser even when this page is closed, which is what lets
-   a caretaker call at any hour and still ring the senior's device. While the
-   page is open, the service worker hands the push here instead of showing a
-   notification, and the page checks for the call or message straight away
-   rather than waiting for its next poll.
---------------------------------------------------------------------------- */
-
 window.Push = (() => {
   'use strict';
 
@@ -22,7 +8,6 @@ window.Push = (() => {
   const supported = 'serviceWorker' in navigator && 'PushManager' in window &&
     'Notification' in window && window.isSecureContext;
 
-  // iPhone and iPad only deliver web push to an app added to the home screen.
   const isIOS = /iP(hone|ad|od)/.test(navigator.userAgent) ||
     (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
   const standalone = window.matchMedia('(display-mode: standalone)').matches ||
@@ -30,17 +15,16 @@ window.Push = (() => {
 
   const ready = (async () => {
     if (!('serviceWorker' in navigator)) return null;
-    // Where a tapped notification should open when no page is: this one.
     try {
       const cache = await caches.open('ask-home');
       await cache.put('/__home', new Response(location.pathname));
-    } catch (_) { /* the worker falls back to / */ }
+    } catch (_) {  }
     try {
       registration = await navigator.serviceWorker.register('/sw.js', {scope: '/'});
       navigator.serviceWorker.addEventListener('message', (event) => {
         const data = event.data || {};
         if (data.type !== 'push') return;
-        listeners.forEach((fn) => { try { fn(data.payload || {}); } catch (_) { /* keep going */ } });
+        listeners.forEach((fn) => { try { fn(data.payload || {}); } catch (_) {  } });
       });
       return navigator.serviceWorker.ready;
     } catch (error) {
@@ -98,8 +82,6 @@ window.Push = (() => {
     return 'on';
   }
 
-  /* A subscription can be replaced by the browser at any time; telling the
-     server again on every load keeps it from going quietly stale. */
   async function refresh(withToken) {
     if (withToken !== undefined) token = withToken;
     if (!supported || Notification.permission !== 'granted') return;

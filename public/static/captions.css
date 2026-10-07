@@ -1,14 +1,8 @@
-/* ---------------------------------------------------------------------------
-   Closed captions. What was heard and what is being said, in large type
-   along the bottom, for anyone who cannot catch it by ear.
-   Light text on near-black reads on any ground, as television captions do.
---------------------------------------------------------------------------- */
-
 .captions {
   position: fixed;
   left: 50%;
   bottom: max(20px, env(safe-area-inset-bottom));
-  z-index: 20;   /* over an open app window, under the dock and calls */
+  z-index: 20;
   display: grid;
   gap: 10px;
   width: min(calc(100vw - 32px), 760px);
@@ -52,7 +46,6 @@
 .captions__text[data-pending="true"] { color: rgb(255 255 255 / .55); font-style: italic; }
 
 @media (max-width: 560px) {
-  /* Clear of the dock, which sits on the right edge on a phone. */
   .captions {
     left: calc(50% - 31px);
     width: min(calc(100vw - 82px), 760px);

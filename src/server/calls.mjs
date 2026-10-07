@@ -1,17 +1,3 @@
-/* Video calls between the senior and one contact.
-
-   Only the signalling lives here: the offer, the answer, and the network
-   candidates the two browsers need to find each other. The picture and the
-   sound go straight between them. In the Flask app this was a dict in
-   memory; a function forgets everything between requests, so the one call
-   in progress is a blob instead. Its state changes rarely and one end at a
-   time; the signals are the chatty part, and both ends send them at once,
-   so each is a key of its own - sig/<call>/<to>/<time> - written once and
-   never rewritten, which nothing racing can lose.
-
-   Placing a call also pushes to the other side's devices, which is what
-   rings a phone whose page is closed. */
-
 import crypto from 'node:crypto';
 import * as messages from './messages.mjs';
 import * as push from './push.mjs';
@@ -28,10 +14,6 @@ const SIGNAL_KINDS = ['offer', 'answer', 'candidate'];
 const KEY = 'call';
 const none = () => ({ call: null });
 
-/* Where the two browsers look for each other. A caretaker is almost never on
-   the senior's wifi, so a relay matters far more here than it did on one
-   network: TURN_URL (plus TURN_USERNAME / TURN_PASSWORD), or a Metered.ca
-   key that hands out short-lived TURN credentials. */
 export async function iceServers() {
   const servers = [];
   const stun = process.env.STUN_URL ?? 'stun:stun.l.google.com:19302';
@@ -75,8 +57,6 @@ function spokenLength(seconds) {
   return minutes === 1 ? '1 min' : `${minutes} min`;
 }
 
-/* What the conversation should say about a call that just ended - written
-   once the state change has actually been saved. */
 async function writeHistory(call) {
   let text;
   let wasRead = true;
@@ -88,7 +68,6 @@ async function writeHistory(call) {
     text = 'Missed video call';
     wasRead = false;
   }
-  // Keyed by the call, so two ends noticing the same timeout write it once.
   const at = call.reason === 'no_answer' ? ringEnd(call) : Date.parse(call.ended);
   await messages.logEvent(call.slug, call.caller, text, { read: wasRead, at, id: `call${call.id}` });
 
@@ -110,8 +89,6 @@ function finish(call, reason) {
   return true;
 }
 
-/* Time out a ringing call nobody answered, forget an ended one. Returns
-   whether anything changed, and the call to write history for. */
 function expire(store) {
   const call = store.call;
   if (!call) return { changed: false };
@@ -139,7 +116,6 @@ async function mutate(fn) {
     const expired = expire(store);
     finished = expired.finished;
     const result = fn(store);
-    // Nothing to do for the caller, but a timeout still has to be saved.
     if (result === update.SKIP && expired.changed) return null;
     return result;
   });
@@ -151,7 +127,6 @@ export async function place(slug, caller) {
   const contact = await messages.findContact(slug);
   if (!contact) throw new HttpError(404, 'contact_not_found', 'There is no contact by that name.');
 
-  // Signals from calls that are over are no use to anyone.
   const stale = await keys('sig/');
   await Promise.all(stale.map((key) => remove(key)));
 
@@ -171,7 +146,6 @@ export async function place(slug, caller) {
     return view(store.call);
   });
 
-  // Ring the far end even if nobody there has the page open.
   const toSenior = caller === messages.CONTACT;
   await push.notify(toSenior ? 'senior' : contact.slug, {
     kind: 'call', slug: contact.slug, callId: call.id,
@@ -232,8 +206,6 @@ export async function signal(slug, sender, kind, data) {
   return view(call);
 }
 
-/* The call this side can see, and whatever was signalled to it since
-   `since`. A plain read unless the call has timed out. */
 export async function poll(viewer, slug, since = '') {
   let store = await read(KEY, none);
   const probe = structuredClone(store);
@@ -245,10 +217,7 @@ export async function poll(viewer, slug, since = '') {
   const call = store.call;
   if (!call || (slug && call.slug !== slug)) return { call: null, signals: [], cursor: 0 };
 
-  // The cursor is the last signal key this side has collected.
   const prefix = sigPrefix(call.id, viewer);
-  // Instances' clocks can disagree by a little, so look back a few seconds
-  // past the cursor; the browser drops signals it has already seen.
   const sinceMs = Number.parseInt(String(since || '0').split('-')[0], 10) || 0;
   const after = sinceMs ? String(Math.max(0, sinceMs - 5000)).padStart(14, '0') : '';
   const fresh = (await keys(prefix)).filter((key) => key.slice(prefix.length) > after)

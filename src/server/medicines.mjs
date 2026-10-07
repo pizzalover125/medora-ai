@@ -1,11 +1,3 @@
-/* The medicine schedule Medora keeps, and the model's read-only view of it.
-
-   The dispenser itself is reached over Bluetooth by the browser
-   (static/medora.js). This is only the schedule both ends agree on. A dose
-   is identified the same way at both ends - by its container and its
-   occurrence minute, which is wall-clock minutes since 1970 in the senior's
-   local time (see clock.mjs). */
-
 import crypto from 'node:crypto';
 import { DAY_NAMES, MONTH_NAMES, hhmm, isoDate, localMinute, minuteToWall, wallNow } from './clock.mjs';
 import { HttpError, read, update } from './store.mjs';
@@ -21,8 +13,6 @@ const SEARCH_DAYS = 62;
 const HISTORY_DAYS = 30;
 const TIME_RE = /^([01]\d|2[0-3]):([0-5]\d)$/;
 
-// The voice may read this schedule, but it may not change it. A misheard
-// medicine name is not a typo here.
 export const TOOLS = [
   {
     type: 'function',
@@ -64,7 +54,6 @@ const doseKey = (container, minute) => `${container}:${minute}`;
 const sortMedicines = (list) => [...list].sort((a, b) =>
   a.container - b.container || a.name.toLowerCase().localeCompare(b.name.toLowerCase()));
 
-/* Every scheduled dose from the start of today onwards, in order. */
 function occurrences(store, days = SEARCH_DAYS, fromDay = 0) {
   const now = wallNow();
   const start = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()) +
@@ -118,10 +107,6 @@ export async function dueNow() {
   return unanswered(store).filter((d) => now - GRACE_MINUTES <= d.minute && d.minute <= now).map(shown);
 }
 
-/* Doses nobody answered, from `windowMinutes` ago up to the end of the grace
-   period - what a caretaker who asked to be told is told about. Yesterday is
-   included so a dose due at 23:58 is still caught a few minutes after
-   midnight. */
 export async function missedDoses(windowMinutes = 60) {
   const now = localMinute();
   const store = await load();
@@ -132,7 +117,6 @@ export async function missedDoses(windowMinutes = 60) {
     .map(shown);
 }
 
-/* Every dose today and how it went - the caretaker's view of the day. */
 export async function todayDoses() {
   const now = localMinute();
   const store = await load();
@@ -150,8 +134,6 @@ export async function todayDoses() {
 }
 
 export const spokenDoseTime = (minute) => spokenTime(minuteToWall(minute));
-
-/* ── writing ─────────────────────────────────────────────────────────── */
 
 const text = (v) => (typeof v === 'string' ? v.trim() : '');
 
@@ -257,8 +239,6 @@ export async function recordDoseResult(container, minute, status) {
   });
   return { ...dose };
 }
-
-/* ── saying it out loud ──────────────────────────────────────────────── */
 
 function spokenTime(at) {
   const hour = at.getUTCHours();

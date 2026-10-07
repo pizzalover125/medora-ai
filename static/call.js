@@ -1,33 +1,11 @@
-/* ---------------------------------------------------------------------------
-   Video calls, shared by both ends of a conversation.
-
-   VideoCall.init({me, slug, onchange})   start watching for calls
-   VideoCall.place(slug)                  ring the other end
-
-   The picture and the sound go straight from one browser to the other over
-   WebRTC. The server only carries the introductions - an offer, an answer,
-   and the network candidates - which this polls for, so there is no socket
-   to keep alive.
-
-   The camera needs a secure page. That is localhost on the machine the
-   assistant runs on, and https:// on a phone (./run.sh --lan --https), so
-   the call screen says as much rather than failing quietly.
---------------------------------------------------------------------------- */
-
 window.VideoCall = (() => {
   'use strict';
 
-  const IDLE_POLL_MS = 1500;   // enough to hear the phone ring
-  const LIVE_POLL_MS = 450;    // candidates should not wait in a mailbox
-  const ENDED_MS = 1500;       // how long "Call ended" stays on screen
+  const IDLE_POLL_MS = 1500;
+  const LIVE_POLL_MS = 450;
+  const ENDED_MS = 1500;
 
-  // Replaced at startup by whatever the server is configured with; this is
-  // the sane default if that request never lands.
   let RTC = {iceServers: [{urls: 'stun:stun.l.google.com:19302'}]};
-  /* Small on purpose. A soft picture that arrives in a second beats a sharp
-     one that arrives in five: there is far less for the encoder to get
-     through before the first frame, and it sharpens by itself once the call
-     has settled. */
   const MEDIA = {
     audio: {echoCancellation: true, noiseSuppression: true, autoGainControl: true},
     video: {
@@ -38,21 +16,21 @@ window.VideoCall = (() => {
     },
   };
 
-  const OPENING_BITRATE = 280000;    // while the first frames are getting through
-  const SETTLED_BITRATE = 1200000;   // once there is a picture to improve
+  const OPENING_BITRATE = 280000;
+  const SETTLED_BITRATE = 1200000;
   const SHARPEN_AFTER_MS = 5000;
 
-  let me = null;          // 'senior' | 'contact'
-  let onlySlug = null;    // a contact page may only see its own thread
-  let onchange = null;    // the host page, so it can refresh the conversation
+  let me = null;
+  let onlySlug = null;
+  let onchange = null;
 
-  let call = null;        // the call as the server sees it
-  let stage = 'idle';     // idle | calling | incoming | live | ended
+  let call = null;
+  let stage = 'idle';
   let pc = null;
   let localStream = null;
   let cursor = 0;
-  let queued = [];        // signals that arrived before the connection existed
-  let iceQueue = [];      // candidates that arrived before the description
+  let queued = [];
+  let iceQueue = [];
   let draining = false;
   let timer = null;
   let ringer = null;
@@ -69,12 +47,8 @@ window.VideoCall = (() => {
 
   const peerName = () => {
     if (!call) return '';
-    // Each end calls the other something different: he sees "Danny", Danny
-    // sees "Grandpa".
     return me === 'senior' ? call.contact.name : call.contact.calls;
   };
-
-  /* ── the ring ─────────────────────────────────────────────────────────── */
 
   let audio = null;
 
@@ -93,7 +67,7 @@ window.VideoCall = (() => {
       osc.connect(gain).connect(audio.destination);
       osc.start();
       osc.stop(audio.currentTime + ms / 1000);
-    } catch (_) { /* a ring is a nicety, never a requirement */ }
+    } catch (_) {  }
   }
 
   function ring(on) {
@@ -107,8 +81,6 @@ window.VideoCall = (() => {
     beep();
     ringer = setInterval(beep, 2400);
   }
-
-  /* ── the call screen ──────────────────────────────────────────────────── */
 
   const ICONS = {
     end: 'M5.5 13.2c3.6-3.4 9.4-3.4 13 0l1.2-1.9a2 2 0 0 0-.5-2.6 11.6 11.6 0 0 0-14.4 0 2 2 0 0 0-.5 2.6Z',
@@ -153,13 +125,9 @@ window.VideoCall = (() => {
     els.remote.className = 'call-screen__remote';
     els.remote.autoplay = true;
     els.remote.playsInline = true;
-    // A <video> holding a track it has not decoded yet is a black rectangle,
-    // which reads as a hang. Their name stays up until there is a picture.
     els.remote.addEventListener('playing', () => {
       screen.classList.add('has-remote', 'is-soft');
       setStatus('');
-      // The first frames are the coarse ones. Letting them arrive softly and
-      // come into focus looks deliberate, which pixels never do.
       setTimeout(() => screen.classList.remove('is-soft'), 900);
       sharpen();
     });
@@ -231,10 +199,6 @@ window.VideoCall = (() => {
     }
   }
 
-  /* Mute and camera flip the track that is already being sent, which the
-     other end sees at once - no renegotiation. The track is looked up when
-     the button is pressed, not when it is drawn: the controls go up while
-     the camera is still opening. */
   function track(kind) {
     if (!localStream) return null;
     return (kind === 'mic'
@@ -256,8 +220,6 @@ window.VideoCall = (() => {
     return node;
   }
 
-  /* ── talking to the server ────────────────────────────────────────────── */
-
   async function request(body) {
     const response = await fetch('/api/calls', {
       method: 'POST',
@@ -265,7 +227,7 @@ window.VideoCall = (() => {
       body: JSON.stringify({as: me, ...body}),
     });
     let data = {};
-    try { data = await response.json(); } catch (_) { /* handled below */ }
+    try { data = await response.json(); } catch (_) {  }
     if (!response.ok) throw new Error(data.message || 'The call could not be placed.');
     return data;
   }
@@ -275,8 +237,6 @@ window.VideoCall = (() => {
     request({action: 'signal', slug: call.slug, kind, data})
       .catch((error) => console.warn('[call] could not signal', kind, error.message));
   }
-
-  /* ── the connection ───────────────────────────────────────────────────── */
 
   function media() {
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
@@ -299,9 +259,6 @@ window.VideoCall = (() => {
     return 'The camera could not be opened.';
   }
 
-  /* WebRTC finds its own level, but it starts cautiously and climbs, and the
-     climb is exactly the part being waited on. So it opens low and is let go
-     once a picture is actually through. */
   async function bitrate(limit) {
     if (!pc) return;
     const sender = pc.getSenders().find((s) => s.track && s.track.kind === 'video');
@@ -312,8 +269,6 @@ window.VideoCall = (() => {
       ? params.encodings : [{}];
     params.encodings[0].maxBitrate = limit;
     params.encodings[0].maxFramerate = 24;
-    // Rather drop detail than motion: a still face that stutters looks worse
-    // than a soft one that moves.
     params.degradationPreference = 'maintain-framerate';
     try {
       await sender.setParameters(params);
@@ -351,17 +306,14 @@ window.VideoCall = (() => {
     pc.ontrack = (event) => {
       els.remote.srcObject = event.streams[0];
       setStatus('Connecting…');
-      // Autoplay is allowed here - answering or dialling was a tap - but a
-      // rejected promise must not become an unhandled one.
       const playing = els.remote.play();
-      if (playing) playing.catch(() => { /* the poster stays until it plays */ });
+      if (playing) playing.catch(() => {  });
     };
     pc.onicecandidate = (event) => {
       if (event.candidate) send('candidate', event.candidate.toJSON());
     };
     pc.onconnectionstatechange = () => {
       if (!pc) return;
-      // Connected is not the same as visible - the picture clears the status.
       if (pc.connectionState === 'failed') {
         setStatus('The connection dropped');
         hangUp('failed');
@@ -404,15 +356,13 @@ window.VideoCall = (() => {
         const waiting = iceQueue;
         iceQueue = [];
         for (const candidate of waiting) {
-          try { await pc.addIceCandidate(candidate); } catch (_) { /* stale */ }
+          try { await pc.addIceCandidate(candidate); } catch (_) {  }
         }
       }
     } finally {
       draining = false;
     }
   }
-
-  /* ── the call itself ──────────────────────────────────────────────────── */
 
   async function place(slug) {
     if (stage !== 'idle') return;
@@ -479,7 +429,7 @@ window.VideoCall = (() => {
   function stopMedia() {
     if (pc) {
       pc.onicecandidate = pc.ontrack = pc.onconnectionstatechange = null;
-      try { pc.close(); } catch (_) { /* already gone */ }
+      try { pc.close(); } catch (_) {  }
       pc = null;
     }
     if (localStream) {
@@ -503,11 +453,8 @@ window.VideoCall = (() => {
     call = null;
     cursor = 0;
     schedule();
-    // The conversation now has a line about the call in it.
     if (had && onchange) onchange();
   }
-
-  /* ── watching for calls ───────────────────────────────────────────────── */
 
   function apply(next) {
     if (!next) {
@@ -582,17 +529,16 @@ window.VideoCall = (() => {
       .then((data) => {
         if (data.iceServers && data.iceServers.length) RTC = {iceServers: data.iceServers};
       })
-      .catch(() => { /* the default stands */ });
+      .catch(() => {  });
 
     tick();
 
-    // Closing the tab mid-call should not leave the other end ringing.
     window.addEventListener('pagehide', () => {
       if (stage === 'idle' || !call) return;
       const body = JSON.stringify({as: me, action: 'end', slug: call.slug});
       try {
         navigator.sendBeacon('/api/calls', new Blob([body], {type: 'application/json'}));
-      } catch (_) { /* the ring timeout catches it instead */ }
+      } catch (_) {  }
     });
   }
 
@@ -601,7 +547,6 @@ window.VideoCall = (() => {
     place,
     get stage() { return stage; },
     get busy() { return stage !== 'idle'; },
-    // Handy from the console when a call will not connect.
     get connection() {
       return pc ? {peer: pc.connectionState, ice: pc.iceConnectionState,
                    signalling: pc.signalingState} : null;

@@ -1,13 +1,3 @@
-/* ---------------------------------------------------------------------------
-   One draggable window, shared by the games and the call/message panels.
-
-   Win.open(label, {build, onClose}) - build(body) fills the window; it runs
-   synchronously before the window is sized and placed, so the random spot
-   below is measured against the real content, not an empty scaffold. Returns
-   whatever build() returned (a stop/teardown function, typically).
-   Win.close()
---------------------------------------------------------------------------- */
-
 window.Win = (() => {
   'use strict';
 
@@ -19,7 +9,6 @@ window.Win = (() => {
     window.dispatchEvent(new CustomEvent('winchange', {detail: {label}}));
   }
 
-  /* Re-triggerable CSS animation: the reflow forces a restart. */
   function flash(el, cls) {
     el.classList.remove(cls);
     void el.offsetWidth;
@@ -35,7 +24,6 @@ window.Win = (() => {
       const gain = ac.createGain();
       osc.type = 'sine';
       osc.frequency.value = freq;
-      // Ramp both ends; a square-edged gate clicks.
       gain.gain.setValueAtTime(0, ac.currentTime);
       gain.gain.linearRampToValueAtTime(volume, ac.currentTime + 0.02);
       gain.gain.setValueAtTime(volume, ac.currentTime + ms / 1000 - 0.04);
@@ -43,7 +31,7 @@ window.Win = (() => {
       osc.connect(gain).connect(ac.destination);
       osc.start();
       osc.stop(ac.currentTime + ms / 1000);
-    } catch (e) { /* audio is a nicety, never a requirement */ }
+    } catch (e) {  }
   }
 
   function onKey(e) {
@@ -61,8 +49,6 @@ window.Win = (() => {
     currentLabel = null;
     if (dying) announce(null);
 
-    // Closing fades out, but a window being replaced goes at once - otherwise
-    // the outgoing one is still in the DOM, and visible, under the new one.
     if (instant) {
       document.querySelectorAll('.win').forEach((w) => w.remove());
       return;
@@ -79,11 +65,6 @@ window.Win = (() => {
     return width * height;
   }
 
-  /* Find a random clear rectangle rather than a random offset. The orb, dock,
-     and any other floating window are expanded by a small breathing gap and
-     treated as blockers. If a tiny viewport makes a completely clear spot
-     impossible, the least-overlapping spot wins, with the dock and existing
-     windows weighted most heavily so their controls remain reachable. */
   function randomSpot(el) {
     const margin = window.innerWidth <= 560 ? 8 : 16;
     const origin = el.getBoundingClientRect();
@@ -129,8 +110,6 @@ window.Win = (() => {
       });
     };
 
-    // Most screens have ample space, so random sampling preserves the loose,
-    // organic placement. Edge candidates catch narrow spaces beside blockers.
     for (let i = 0; i < 240; i++) {
       add(
         minLeft + Math.random() * (maxLeft - minLeft),
@@ -184,16 +163,9 @@ window.Win = (() => {
     el.style.setProperty('--s', '1');
     document.body.appendChild(el);
 
-    // Fill the window before it's measured - build() runs synchronously, so
-    // the random spot below is sized against the real content, not the
-    // empty scaffold (which is a lot smaller and would let the real window
-    // spill off screen).
     const body = el.querySelector('.win__body');
     const result = opts.build ? opts.build(body) : undefined;
 
-    // Measure and place at the final size while the window is hidden and has
-    // no transition. Its entrance animation begins only after these final
-    // coordinates have been committed by the browser.
     const [x, y] = randomSpot(el);
     el.style.setProperty('--x', x + 'px');
     el.style.setProperty('--y', y + 'px');
@@ -223,8 +195,6 @@ window.Win = (() => {
     handle.addEventListener('pointerdown', (e) => {
       if (e.target.closest('.win__close')) return;
       e.preventDefault();
-      // Set the drag state first: capture is an optimisation, and if it throws
-      // the drag must still work rather than silently doing nothing.
       el.classList.add('is-dragging');
       startX = e.clientX - x;
       startY = e.clientY - y;
@@ -235,7 +205,6 @@ window.Win = (() => {
       if (!el.classList.contains('is-dragging')) return;
       x = e.clientX - startX;
       y = e.clientY - startY;
-      // Keep at least a corner of the window on screen.
       const r = el.getBoundingClientRect();
       const maxX = window.innerWidth / 2 + r.width / 2 - 40;
       const maxY = window.innerHeight / 2 + r.height / 2 - 30;

@@ -1,12 +1,3 @@
-/* ---------------------------------------------------------------------------
-   Four small games in one draggable window.
-
-   window.Games.open('simon' | 'difference' | 'scramble' | 'multi')
-
-   Each game gets a <div> to fill and returns an optional stop() for anything
-   that needs tearing down (Simon's timers).
---------------------------------------------------------------------------- */
-
 window.Games = (() => {
   'use strict';
 
@@ -24,8 +15,6 @@ window.Games = (() => {
   const flash = (el, cls) => Win.flash(el, cls);
   const tone = (f, ms) => Win.tone(f, ms);
 
-  /* ── Simon ────────────────────────────────────────────────────────────── */
-
   const SIMON = [
     {c: '#64C5EB', f: 329.63},
     {c: '#FEB326', f: 261.63},
@@ -36,7 +25,7 @@ window.Games = (() => {
   function simon(body) {
     const note = document.createElement('div');
     note.className = 'win__note';
-    note.textContent = 'Watch';        // set now; the first round starts shortly
+    note.textContent = 'Watch';
     const grid = document.createElement('div');
     grid.className = 'simon';
     grid.dataset.locked = '1';
@@ -99,9 +88,6 @@ window.Games = (() => {
     return clearTimers;
   }
 
-  /* ── Difference ───────────────────────────────────────────────────────── */
-
-  // Pairs that genuinely need a second look.
   const PAIRS = [
     ['\u{1F600}', '\u{1F603}'], ['\u{1F610}', '\u{1F611}'],
     ['\u{1F34E}', '\u{1F34F}'], ['⭐', '\u{1F31F}'],
@@ -126,7 +112,7 @@ window.Games = (() => {
 
       const [a, b] = PAIRS[rand(PAIRS.length)];
       const odd = rand(100);
-      const flip = Math.random() < 0.5;          // which of the pair is the many
+      const flip = Math.random() < 0.5;
 
       for (let i = 0; i < 100; i++) {
         const cell = document.createElement('button');
@@ -148,8 +134,6 @@ window.Games = (() => {
 
     deal();
   }
-
-  /* ── Scramble ─────────────────────────────────────────────────────────── */
 
   const WORDS = (
     'table chair water bread music river green happy light house ' +
@@ -175,7 +159,7 @@ window.Games = (() => {
       let mixed;
       do {
         mixed = shuffle(word.split('')).join('');
-      } while (mixed === word);            // never hand them the answer
+      } while (mixed === word);
 
       letters.textContent = '';
       for (const ch of mixed) {
@@ -211,8 +195,6 @@ window.Games = (() => {
     setTimeout(() => input.focus(), 120);
   }
 
-  /* ── Multi ────────────────────────────────────────────────────────────── */
-
   function multi(body) {
     const note = document.createElement('div');
     note.className = 'win__note';
@@ -230,7 +212,6 @@ window.Games = (() => {
       prompt.textContent = `${a} × ${b}`;
       note.textContent = `${score} correct`;
 
-      // Plausible wrong answers: neighbouring products, never negative.
       const options = new Set([answer]);
       while (options.size < 4) {
         const off = [a, -a, b, -b, 1, -1, 2, -2][rand(8)];
@@ -263,8 +244,6 @@ window.Games = (() => {
 
     deal();
   }
-
-  /* ── registry ─────────────────────────────────────────────────────────── */
 
   const GAMES = {
     simon:      {label: 'Simon',      desc: 'Remember the pattern', build: simon},

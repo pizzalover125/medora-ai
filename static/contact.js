@@ -1,10 +1,3 @@
-/* ---------------------------------------------------------------------------
-   The other end of a conversation: /grandson, /son, /nephew, and so on.
-
-   The same thread the assistant's Messages app shows, from the family's side,
-   on a plain page that works in any second tab or on a phone.
---------------------------------------------------------------------------- */
-
 (() => {
   'use strict';
 
@@ -50,7 +43,7 @@
   async function requestJSON(url, options = {}) {
     const response = await fetch(url, {cache: 'no-store', ...options});
     let data = {};
-    try { data = await response.json(); } catch (_) { /* handled below */ }
+    try { data = await response.json(); } catch (_) {  }
     if (!response.ok) throw new Error(data.message || 'Messages are not answering.');
     return data;
   }
@@ -62,8 +55,6 @@
     return row;
   }
 
-  /* This page is the contact, so their own messages are the ones on the
-     right; his arrive on the left. */
   function bubble(message) {
     if (message.kind === 'call') return note(message);
     const row = el('div', `chat-row ${message.from === 'contact' ? 'is-me' : 'is-them'}`);
@@ -76,7 +67,6 @@
     return row;
   }
 
-  /* Append only what is new, so a poll never disturbs the scroll position. */
   function appendMessages(messages) {
     const nearBottom = log.scrollHeight - log.scrollTop - log.clientHeight < 80;
     let added = 0;
@@ -140,7 +130,6 @@
   document.getElementById('call')
     .addEventListener('click', () => VideoCall.place(slug));
 
-  // A call may come the other way at any time, so this watches from the start.
   VideoCall.init({me: 'contact', slug, onchange: refresh});
 
   refresh();

@@ -1,9 +1,3 @@
-/* ---------------------------------------------------------------------------
-   The call screen. It takes the whole window at both ends - on a phone
-   because that is what a call looks like, and on his machine because the
-   point of the picture is that it is big enough to see.
---------------------------------------------------------------------------- */
-
 .call-screen {
   position: fixed;
   inset: 0;
@@ -27,8 +21,6 @@
 
 .call-screen[hidden] { display: none; }
 
-/* The far end, once it arrives. Until then the screen stays dark behind the
-   name, the way a phone does while it rings. */
 .call-screen__remote {
   position: absolute;
   inset: 0;
@@ -42,8 +34,6 @@
 
 .call-screen.has-remote .call-screen__remote { opacity: 1; }
 
-/* The picture opens soft and comes into focus as the encoder finds its feet,
-   so the first coarse frames read as arriving rather than as broken. */
 .call-screen.is-soft .call-screen__remote { filter: blur(12px); }
 .call-screen.has-remote .call-screen__avatar { opacity: 0; }
 
@@ -64,8 +54,6 @@
   transition: opacity 300ms ease;
 }
 
-/* The near end, small, and mirrored - a camera you can see yourself in
-   should behave like a mirror. */
 .call-screen__local {
   position: absolute;
   top: max(20px, env(safe-area-inset-top));
@@ -125,8 +113,6 @@
 
 .call-screen__note:empty { display: none; }
 
-/* ── the controls ──────────────────────────────────────────────────────── */
-
 .call-screen__controls {
   position: relative;
   display: flex;
@@ -161,7 +147,6 @@
 
 .call-button__disc svg { width: 28px; height: 28px; }
 
-/* The second path a toggle adds is the line through the icon. */
 .call-button__disc svg + svg { position: absolute; opacity: .9; }
 
 .call-button__label {
@@ -182,7 +167,6 @@
 .call-button.is-end .call-button__disc svg { transform: rotate(134deg); }
 .call-button.is-quiet.is-off .call-button__disc { background: rgb(255 255 255 / .28); }
 
-/* Answering is the one thing that should be hard to miss. */
 .call-screen[data-stage="incoming"] .call-button.is-answer .call-button__disc {
   animation: call-pulse 1.6s ease-in-out infinite;
 }
@@ -191,8 +175,6 @@
   0%, 100% { box-shadow: 0 0 0 0 rgb(53 163 95 / .5); }
   60%      { box-shadow: 0 0 0 18px rgb(53 163 95 / 0); }
 }
-
-/* ── the button that starts one ────────────────────────────────────────── */
 
 .call-start {
   flex: none;
@@ -225,8 +207,6 @@
   background: rgb(var(--line) / .06);
   outline: none;
 }
-
-/* ── the line a call leaves in the conversation ────────────────────────── */
 
 .chat-note {
   align-self: center;
